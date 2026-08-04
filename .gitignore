@@ -1,0 +1,20 @@
+# Build outputs
+bin/
+obj/
+Distribuicao/
+
+# Pacotes e arquivos compactados de distribuição
+*.zip
+
+# Executáveis de terceiros (baixe pelo README)
+yt-dlp.exe
+ffmpeg.exe
+
+# Visual Studio / Rider
+.vs/
+*.user
+*.suo
+
+# OS
+Thumbs.db
+.DS_Store
