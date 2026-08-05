@@ -1,0 +1,33 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <UseWindowsForms>true</UseWindowsForms>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <AssemblyName>YtDlpGui</AssemblyName>
+    <RootNamespace>YtDlpGui</RootNamespace>
+    <ApplicationHighDpiMode>SystemAware</ApplicationHighDpiMode>
+    <LangVersion>latest</LangVersion>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!--
+      IMPORTANTE:
+      Se você quiser que o yt-dlp.exe e o ffmpeg.exe sejam copiados
+      automaticamente para a pasta de saída (bin\Debug\net8.0-windows)
+      sempre que compilar, coloque os arquivos numa pasta "tools" ao lado
+      deste .csproj e descomente as linhas abaixo.
+    -->
+    <!--
+    <None Include="tools\yt-dlp.exe">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Include="tools\ffmpeg.exe">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    -->
+  </ItemGroup>
+
+</Project>
