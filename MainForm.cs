@@ -33,10 +33,21 @@ namespace YtDlpGui
         // (usado para exibir uma mensagem adequada em vez de "erro").
         private bool _canceladoPeloUsuario;
 
+        // Caminho do arquivo final identificado a partir da saída do yt-dlp
+        // (linhas "Destination: ..."), usado para registrar o título no histórico.
+        private string? _ultimoArquivoBaixado;
+
         // Expressão regular para capturar a porcentagem de progresso que o yt-dlp
         // imprime no formato: "[download]  45.2% of ..."
         private static readonly Regex RegexProgresso =
             new Regex(@"\[download\]\s+(\d{1,3}(?:\.\d+)?)%", RegexOptions.Compiled);
+
+        // Expressão regular para capturar o caminho do arquivo final que o
+        // yt-dlp está gravando, a partir de linhas como:
+        // "[download] Destination: C:\...\video.mp4"
+        // "[ExtractAudio] Destination: C:\...\audio.mp3"
+        private static readonly Regex RegexDestino =
+            new Regex(@"Destination:\s*(.+)$", RegexOptions.Compiled);
 
         public MainForm()
         {
@@ -159,7 +170,7 @@ namespace YtDlpGui
                 argumentos.Add(_ffmpegDir);
             }
 
-            await ExecutarYtDlpAsync(argumentos, "Download de vídeo (MP4)");
+            await ExecutarYtDlpAsync(argumentos, "Download de vídeo (MP4)", "MP4");
         }
 
         /// <summary>
@@ -189,7 +200,7 @@ namespace YtDlpGui
                 argumentos.Add(_ffmpegDir);
             }
 
-            await ExecutarYtDlpAsync(argumentos, "Download de áudio (MP3)");
+            await ExecutarYtDlpAsync(argumentos, "Download de áudio (MP3)", "MP3");
         }
 
         /// <summary>
@@ -222,6 +233,34 @@ namespace YtDlpGui
             {
                 AdicionarStatus($"❌ Não foi possível cancelar o processo: {ex.Message}");
             }
+        }
+
+        /// <summary>
+        /// Botão "Histórico": abre a janela com a lista de downloads já realizados.
+        /// </summary>
+        private void btnHistorico_Click(object sender, EventArgs e)
+        {
+            using var form = new HistoricoForm();
+            form.ShowDialog(this);
+        }
+
+        /// <summary>
+        /// Botão "Atualizar yt-dlp": roda "yt-dlp.exe -U", que baixa e aplica a
+        /// versão mais recente do próprio yt-dlp. O YouTube muda com frequência,
+        /// e manter o yt-dlp atualizado evita que os downloads passem a falhar.
+        /// </summary>
+        private async void btnAtualizarYtDlp_Click(object sender, EventArgs e)
+        {
+            if (!File.Exists(_ytDlpPath))
+            {
+                MessageBox.Show(this,
+                    $"Não foi possível encontrar o yt-dlp.exe em:\n{_ytDlpPath}",
+                    "yt-dlp.exe não encontrado", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                return;
+            }
+
+            var argumentos = new System.Collections.Generic.List<string> { "-U" };
+            await ExecutarYtDlpAsync(argumentos, "Verificação de atualização do yt-dlp");
         }
 
         /// <summary>
@@ -273,10 +312,16 @@ namespace YtDlpGui
         /// </summary>
         /// <param name="argumentos">Lista de argumentos a passar para o yt-dlp (sem escaping manual).</param>
         /// <param name="descricaoAcao">Texto descritivo da ação, exibido no início do log.</param>
+        /// <param name="tipoHistorico">
+        /// Quando informado ("MP4" ou "MP3"), registra um item no histórico de
+        /// downloads caso a execução termine com sucesso. Deixe nulo para ações
+        /// que não devem gerar registro (ex.: atualização do yt-dlp).
+        /// </param>
         private async System.Threading.Tasks.Task ExecutarYtDlpAsync(
-            System.Collections.Generic.List<string> argumentos, string descricaoAcao)
+            System.Collections.Generic.List<string> argumentos, string descricaoAcao, string? tipoHistorico = null)
         {
             _canceladoPeloUsuario = false;
+            _ultimoArquivoBaixado = null;
             DefinirEstadoDownloadEmAndamento(true);
             LimparStatus();
             AdicionarStatus($"▶ Iniciando: {descricaoAcao}");
@@ -330,6 +375,20 @@ namespace YtDlpGui
                 {
                     AdicionarStatus("✅ Download concluído com sucesso!");
                     AtualizarProgresso(100);
+
+                    if (!string.IsNullOrEmpty(tipoHistorico))
+                    {
+                        GerenciadorHistorico.Adicionar(new HistoricoItem
+                        {
+                            DataHora = DateTime.Now,
+                            Tipo = tipoHistorico,
+                            Titulo = string.IsNullOrEmpty(_ultimoArquivoBaixado)
+                                ? "(nome não identificado)"
+                                : Path.GetFileName(_ultimoArquivoBaixado),
+                            Pasta = txtSavePath.Text,
+                            Url = txtUrl.Text.Trim()
+                        });
+                    }
                 }
                 else
                 {
@@ -391,6 +450,12 @@ namespace YtDlpGui
                     out double percentual))
             {
                 AtualizarProgresso(percentual);
+            }
+
+            var matchDestino = RegexDestino.Match(linha);
+            if (matchDestino.Success)
+            {
+                _ultimoArquivoBaixado = matchDestino.Groups[1].Value.Trim();
             }
 
             // Alguns estágios comuns do yt-dlp, traduzidos para facilitar o entendimento do aluno.
@@ -458,6 +523,8 @@ namespace YtDlpGui
             btnSelectFolder.Enabled = !emAndamento;
             txtUrl.Enabled = !emAndamento;
             chkPlaylist.Enabled = !emAndamento;
+            btnAtualizarYtDlp.Enabled = !emAndamento;
+            btnHistorico.Enabled = !emAndamento;
 
             // O botão Cancelar só faz sentido enquanto há um download em andamento.
             btnCancelar.Enabled = emAndamento;

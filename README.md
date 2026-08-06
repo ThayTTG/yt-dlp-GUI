@@ -7,11 +7,16 @@ Aplicação desktop em **C# / .NET 8 (WinForms)** que permite baixar vídeos e
 
 ```
 YtDlpGui/
-├── YtDlpGui.csproj          # arquivo de projeto (.NET 8, WinForms)
-├── Program.cs                # ponto de entrada da aplicação
-├── MainForm.cs                # lógica principal (chamada ao yt-dlp, eventos, validações)
-├── MainForm.Designer.cs       # definição visual dos controles (gerado como "Designer")
-└── README.md                  # este arquivo
+├── YtDlpGui.csproj            # arquivo de projeto (.NET 8, WinForms)
+├── Program.cs                  # ponto de entrada da aplicação
+├── MainForm.cs                  # tela principal: chamada ao yt-dlp, eventos, validações
+├── MainForm.Designer.cs         # layout visual da tela principal
+├── HistoricoForm.cs             # janela de histórico de downloads
+├── HistoricoForm.Designer.cs    # layout visual da janela de histórico
+├── GerenciadorHistorico.cs      # persistência do histórico em JSON (%AppData%)
+├── publicar.ps1                 # script que gera o pacote pronto para distribuir
+├── LEIA-ME.txt                  # instruções para o usuário final (vai dentro do pacote)
+└── README.md                    # este arquivo (documentação técnica)
 ```
 
 ## 1. Onde colocar o `yt-dlp.exe` e o `ffmpeg.exe`
@@ -113,7 +118,77 @@ eventos disparam em uma thread diferente da interface gráfica.
   durante um download em andamento, e o botão "Cancelar" é o único
   controle de ação habilitado nesse momento.
 
-## 6. Possíveis melhorias futuras (fora do escopo inicial)
+## 6. Histórico de downloads
 
-- Histórico de downloads realizados.
-- Verificação/atualização automática do `yt-dlp.exe` (`yt-dlp -U`).
+- Botão **"Histórico"** (canto superior direito) abre a janela
+  `HistoricoForm`, com uma lista (data/hora, tipo, arquivo, pasta) de tudo
+  que já foi baixado com sucesso.
+- Os dados são persistidos em JSON pela classe `GerenciadorHistorico`, no
+  arquivo `%AppData%\YtDlpGui\historico.json` — não depende de banco de
+  dados, e sobrevive a atualizações do programa.
+- O nome do arquivo final é obtido lendo a saída do yt-dlp em busca de
+  linhas `Destination: ...` (via `RegexDestino` em `MainForm.cs`).
+- Na janela de histórico é possível abrir a pasta de um item específico no
+  Explorer, ou limpar todo o histórico (com confirmação).
+- São mantidos no máximo 200 registros; os mais antigos são descartados
+  automaticamente.
+
+## 7. Atualização do yt-dlp
+
+- Botão **"Atualizar yt-dlp"** roda `yt-dlp.exe -U`, que baixa e aplica a
+  versão mais recente do próprio yt-dlp. Como o YouTube muda o
+  funcionamento do site com frequência, isso evita que os downloads
+  passem a falhar com o tempo.
+- Reaproveita o mesmo pipeline assíncrono (`ExecutarYtDlpAsync`) usado
+  pelos downloads, então a saída aparece no mesmo log e os botões ficam
+  bloqueados durante a atualização.
+
+## 8. Distribuição para usuários comuns (`publicar.ps1`)
+
+Para que qualquer pessoa consiga usar o programa **sem instalar o .NET,
+sem instalar o yt-dlp/ffmpeg manualmente e sem mexer em linha de comando**,
+o projeto inclui um script de empacotamento: `publicar.ps1`.
+
+### O que o script faz
+
+1. Compila a aplicação em modo **self-contained + single file**
+   (`dotnet publish -r win-x64 --self-contained true -p:PublishSingleFile=true`),
+   gerando um único `YtDlpGui.exe` que já contém o runtime do .NET
+   embutido — o usuário final não precisa instalar nada para rodá-lo.
+2. Baixa automaticamente o `yt-dlp.exe` mais recente
+   (`github.com/yt-dlp/yt-dlp/releases/latest`).
+3. Baixa automaticamente um build do `ffmpeg` (gyan.dev) e extrai apenas
+   o `ffmpeg.exe`.
+4. Copia o `LEIA-ME.txt` (instruções em português simples, sem jargão
+   técnico) para dentro do pacote.
+5. Junta tudo em uma pasta `Distribuicao/` e gera
+   `YtDlpGui-Portatil.zip`.
+
+### Como gerar o pacote
+
+Em um Windows com o **.NET 8 SDK** instalado e conexão com a internet:
+
+```powershell
+cd YtDlpGui
+.\publicar.ps1
+```
+
+Ao final, envie o arquivo **`YtDlpGui-Portatil.zip`** por e-mail, Google
+Drive, pendrive, etc. O usuário final só precisa:
+
+1. Extrair o `.zip`;
+2. Dar dois cliques em `YtDlpGui.exe`;
+3. (Na primeira execução, o Windows SmartScreen pode pedir para clicar em
+   "Mais informações" → "Executar assim mesmo", pois o executável não tem
+   certificado de assinatura pago — isso é esperado e está explicado no
+   `LEIA-ME.txt`.)
+
+Não é necessário rodar `dotnet build`, instalar SDK, nem baixar yt-dlp ou
+ffmpeg manualmente do lado do usuário final — o pacote já vem completo.
+
+## 9. Possíveis melhorias futuras (fora do escopo atual)
+
+- Assinatura digital do executável, para eliminar o aviso do SmartScreen.
+- Verificação automática de atualização do próprio programa (não apenas
+  do yt-dlp).
+- Exportar o histórico para CSV/Excel.

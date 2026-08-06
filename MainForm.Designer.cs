@@ -22,6 +22,8 @@ namespace YtDlpGui
         #region Código gerado pelo Designer de Formulários Windows
 
         private System.Windows.Forms.Label lblUrl;
+        private System.Windows.Forms.Button btnHistorico;
+        private System.Windows.Forms.Button btnAtualizarYtDlp;
         private System.Windows.Forms.TextBox txtUrl;
         private System.Windows.Forms.Label lblSavePath;
         private System.Windows.Forms.TextBox txtSavePath;
@@ -42,6 +44,8 @@ namespace YtDlpGui
         private void InitializeComponent()
         {
             this.lblUrl = new System.Windows.Forms.Label();
+            this.btnHistorico = new System.Windows.Forms.Button();
+            this.btnAtualizarYtDlp = new System.Windows.Forms.Button();
             this.txtUrl = new System.Windows.Forms.TextBox();
             this.lblSavePath = new System.Windows.Forms.Label();
             this.txtSavePath = new System.Windows.Forms.TextBox();
@@ -64,6 +68,28 @@ namespace YtDlpGui
             this.lblUrl.Size = new System.Drawing.Size(150, 15);
             this.lblUrl.TabIndex = 0;
             this.lblUrl.Text = "URL do vídeo do YouTube:";
+            //
+            // btnHistorico
+            //
+            this.btnHistorico.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
+            this.btnHistorico.Location = new System.Drawing.Point(482, 10);
+            this.btnHistorico.Name = "btnHistorico";
+            this.btnHistorico.Size = new System.Drawing.Size(90, 25);
+            this.btnHistorico.TabIndex = 13;
+            this.btnHistorico.Text = "Histórico";
+            this.btnHistorico.UseVisualStyleBackColor = true;
+            this.btnHistorico.Click += new System.EventHandler(this.btnHistorico_Click);
+            //
+            // btnAtualizarYtDlp
+            //
+            this.btnAtualizarYtDlp.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
+            this.btnAtualizarYtDlp.Location = new System.Drawing.Point(578, 10);
+            this.btnAtualizarYtDlp.Name = "btnAtualizarYtDlp";
+            this.btnAtualizarYtDlp.Size = new System.Drawing.Size(96, 25);
+            this.btnAtualizarYtDlp.TabIndex = 14;
+            this.btnAtualizarYtDlp.Text = "Atualizar yt-dlp";
+            this.btnAtualizarYtDlp.UseVisualStyleBackColor = true;
+            this.btnAtualizarYtDlp.Click += new System.EventHandler(this.btnAtualizarYtDlp_Click);
             //
             // txtUrl
             //
@@ -205,6 +231,8 @@ namespace YtDlpGui
             this.Controls.Add(this.txtSavePath);
             this.Controls.Add(this.lblSavePath);
             this.Controls.Add(this.txtUrl);
+            this.Controls.Add(this.btnAtualizarYtDlp);
+            this.Controls.Add(this.btnHistorico);
             this.Controls.Add(this.lblUrl);
             this.Name = "MainForm";
             this.StartPosition = System.Windows.Forms.FormStartPosition.CenterScreen;

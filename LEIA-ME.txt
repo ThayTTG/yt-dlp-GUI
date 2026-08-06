@@ -1,0 +1,76 @@
+====================================================
+ COMO USAR O DOWNLOADER DE VÍDEOS DO YOUTUBE
+====================================================
+
+Este programa permite baixar vídeos (MP4) ou apenas o áudio (MP3) de
+links do YouTube, sem precisar usar linha de comando.
+
+--------------------------------------------------
+1) EXTRAIA OS ARQUIVOS
+--------------------------------------------------
+Se você recebeu um arquivo .zip, clique com o botão direito nele e
+escolha "Extrair tudo...". Depois abra a pasta extraída.
+
+--------------------------------------------------
+2) ABRA O PROGRAMA
+--------------------------------------------------
+Dentro da pasta, dê dois cliques em:
+
+    YtDlpGui.exe
+
+Não é necessário instalar nada — o programa já vem pronto para uso.
+
+O Windows pode exibir um aviso do "Windows Defender SmartScreen" na
+primeira vez que você abrir o programa. Isso é normal para programas
+novos que ainda não têm um certificado digital pago. Para continuar:
+    - Clique em "Mais informações"
+    - Depois clique em "Executar assim mesmo"
+
+--------------------------------------------------
+3) BAIXE UM VÍDEO OU ÁUDIO
+--------------------------------------------------
+1. Cole o link do vídeo do YouTube no campo de URL.
+2. Confira (ou altere, com o botão "Selecionar Pasta") onde o arquivo
+   será salvo. Por padrão, é a pasta "Downloads" do seu usuário.
+3. Clique em:
+     - "Baixar MP4 (Vídeo)"  -> baixa o vídeo completo
+     - "Baixar MP3 (Áudio)"  -> baixa apenas o áudio, em MP3
+4. Acompanhe o andamento na barra de progresso e na caixa de texto
+   abaixo dela.
+5. Se precisar interromper, clique em "Cancelar".
+
+--------------------------------------------------
+OUTRAS FUNÇÕES
+--------------------------------------------------
+- "Baixar playlist inteira": marque esta opção ANTES de clicar em
+  Baixar se o link colado for de uma playlist e você quiser baixar
+  todos os vídeos dela (por padrão, baixa só o vídeo do link).
+- "Histórico": mostra a lista de tudo que você já baixou, com data,
+  tipo, nome do arquivo e pasta onde foi salvo. É possível abrir a
+  pasta de um item diretamente por ali.
+- "Atualizar yt-dlp": o YouTube muda com frequência, então de vez em
+  quando é bom clicar aqui para atualizar o componente responsável
+  pelo download (isso não altera o restante do programa).
+
+--------------------------------------------------
+IMPORTANTE
+--------------------------------------------------
+- Mantenha os arquivos YtDlpGui.exe, yt-dlp.exe e ffmpeg.exe sempre
+  juntos, na mesma pasta — o programa depende deles para funcionar.
+- Use este programa apenas para baixar conteúdo que você tem o
+  direito de baixar (vídeos próprios, de domínio público, com licença
+  livre, aulas liberadas pelo professor, etc.), respeitando os Termos
+  de Uso do YouTube e os direitos autorais de terceiros.
+
+--------------------------------------------------
+PROBLEMAS COMUNS
+--------------------------------------------------
+- "yt-dlp.exe não encontrado": verifique se o arquivo yt-dlp.exe está
+  na mesma pasta do YtDlpGui.exe.
+- Download falha ou trava: clique em "Atualizar yt-dlp" e tente
+  novamente — o YouTube muda o funcionamento do site com frequência.
+- Antivírus bloqueando: alguns antivírus podem alertar sobre o
+  yt-dlp.exe por ele baixar arquivos da internet. Isso é um
+  comportamento normal da ferramenta (é um projeto de código aberto
+  muito usado); se preferir, você pode verificar o arquivo no
+  VirusTotal antes de usá-lo.
