@@ -186,7 +186,51 @@ Drive, pendrive, etc. O usuário final só precisa:
 Não é necessário rodar `dotnet build`, instalar SDK, nem baixar yt-dlp ou
 ffmpeg manualmente do lado do usuário final — o pacote já vem completo.
 
-## 9. Possíveis melhorias futuras (fora do escopo atual)
+## 9. Correção: arquivo salvo com extensão estranha (ex.: `.av01`)
+
+Esse comportamento acontecia quando o `ffmpeg.exe` não era encontrado (ou o
+seletor de formato trazia faixas em codecs que exigiam remuxagem): o yt-dlp
+não conseguia mesclar vídeo e áudio e salvava as faixas separadas, com a
+extensão baseada no nome do codec.
+
+Correções aplicadas em `btnDownloadMp4_Click`:
+
+- O seletor de formato agora prioriza streams **já nativamente compatíveis
+  com MP4/M4A**:
+  `-f "bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/bestvideo+bestaudio/best"`.
+  Isso reduz a dependência do ffmpeg (muitos vídeos já têm uma opção
+  "tudo-em-um" em MP4) e evita cair em AV1/VP9 + Opus quando não é
+  necessário.
+- `ValidarEntradas(bool exigeFfmpeg)` agora trata o ffmpeg ausente de forma
+  diferente por tipo de download:
+  - **MP3** (`exigeFfmpeg: true`): bloqueia o download com uma mensagem de
+    erro clara, pois a extração de áudio depende 100% do ffmpeg.
+  - **MP4** (`exigeFfmpeg: false`): avisa o usuário e pergunta se ele quer
+    continuar mesmo assim (Sim/Não), já que muitos vídeos funcionam sem
+    mesclagem.
+
+## 10. Correção: erro "Sign in to confirm you're not a bot"
+
+O YouTube passou a exigir, para alguns IPs/contas, uma confirmação de que a
+requisição não vem de um robô. A solução recomendada pelo próprio projeto
+yt-dlp é enviar cookies de uma sessão autenticada. Foi adicionado um novo
+grupo **"Autenticação"** na tela principal, com três opções:
+
+- **Não usar cookies (padrão)** — comportamento anterior, sem alterações.
+- **Cookies do navegador** — adiciona `--cookies-from-browser <navegador>`,
+  lendo os cookies diretamente de um navegador local (Chrome, Edge, Firefox,
+  Brave, Opera, Vivaldi ou Chromium) em que o aluno já esteja logado no
+  YouTube. Não exige nenhuma exportação manual.
+- **Arquivo cookies.txt** — adiciona `--cookies <caminho>`, usando um
+  arquivo exportado manualmente (ex.: extensão "Get cookies.txt" no
+  navegador). Um `OpenFileDialog` permite selecionar o arquivo.
+
+Ambas as opções são implementadas em `AdicionarArgumentosDeAutenticacao`,
+chamado tanto no download de MP4 quanto no de MP3. Além disso,
+`TratarLinhaNaUi` detecta a mensagem de erro específica do YouTube na saída
+do yt-dlp e exibe uma dica no log orientando o uso dessas opções.
+
+## 11. Possíveis melhorias futuras (fora do escopo atual)
 
 - Assinatura digital do executável, para eliminar o aviso do SmartScreen.
 - Verificação automática de atualização do próprio programa (não apenas

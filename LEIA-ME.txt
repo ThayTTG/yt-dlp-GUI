@@ -51,6 +51,18 @@ OUTRAS FUNÇÕES
 - "Atualizar yt-dlp": o YouTube muda com frequência, então de vez em
   quando é bom clicar aqui para atualizar o componente responsável
   pelo download (isso não altera o restante do programa).
+- "Autenticação": se aparecer uma mensagem dizendo algo como "Sign in
+  to confirm you're not a bot" (o YouTube pedindo para confirmar que
+  você não é um robô), marque uma destas opções ANTES de baixar de
+  novo:
+    - "Usar cookies do navegador": escolha o navegador em que você
+      está logado no YouTube (Chrome, Edge, Firefox, etc.). O
+      programa lê os cookies automaticamente, sem você precisar
+      exportar nada.
+    - "Usar arquivo cookies.txt": se preferir, exporte os cookies do
+      seu navegador (existem extensões gratuitas para isso, como
+      "Get cookies.txt") e selecione o arquivo pelo botão
+      "Selecionar...".
 
 --------------------------------------------------
 IMPORTANTE
@@ -67,6 +79,8 @@ PROBLEMAS COMUNS
 --------------------------------------------------
 - "yt-dlp.exe não encontrado": verifique se o arquivo yt-dlp.exe está
   na mesma pasta do YtDlpGui.exe.
+- "Sign in to confirm you're not a bot": use a seção "Autenticação"
+  descrita acima (cookies do navegador é a forma mais simples).
 - Download falha ou trava: clique em "Atualizar yt-dlp" e tente
   novamente — o YouTube muda o funcionamento do site com frequência.
 - Antivírus bloqueando: alguns antivírus podem alertar sobre o

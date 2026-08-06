@@ -61,6 +61,9 @@ namespace YtDlpGui
 
             // Define uma pasta padrão de salvamento (Downloads do usuário).
             txtSavePath.Text = ObterPastaDownloadsPadrao();
+
+            // Navegador padrão sugerido para leitura de cookies (o mais comum entre os alunos).
+            cmbNavegador.SelectedIndex = 0; // "chrome"
         }
 
         /// <summary>
@@ -149,13 +152,19 @@ namespace YtDlpGui
         /// </summary>
         private async void btnDownloadMp4_Click(object sender, EventArgs e)
         {
-            if (!ValidarEntradas())
+            if (!ValidarEntradas(exigeFfmpeg: false))
                 return;
 
             var argumentos = new System.Collections.Generic.List<string>
             {
                 txtUrl.Text.Trim(),
-                "-f", "bestvideo+bestaudio/best",
+                // Prioriza vídeo em MP4 (H.264) + áudio em M4A (AAC), que são
+                // nativamente compatíveis com o container MP4 e não deixam
+                // "sobras" com extensão de codec (ex.: .av01) caso o ffmpeg
+                // não esteja disponível para remuxar/mesclar. Só cai para
+                // "bestvideo+bestaudio" (que pode trazer AV1/VP9 + Opus) se
+                // não houver opção em MP4/M4A.
+                "-f", "bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/bestvideo+bestaudio/best",
                 "--merge-output-format", "mp4",
                 "--newline",
                 "-P", txtSavePath.Text,
@@ -163,6 +172,7 @@ namespace YtDlpGui
             };
 
             AdicionarArgumentoDePlaylist(argumentos);
+            AdicionarArgumentosDeAutenticacao(argumentos);
 
             if (File.Exists(_ffmpegPath))
             {
@@ -179,7 +189,7 @@ namespace YtDlpGui
         /// </summary>
         private async void btnDownloadMp3_Click(object sender, EventArgs e)
         {
-            if (!ValidarEntradas())
+            if (!ValidarEntradas(exigeFfmpeg: true))
                 return;
 
             var argumentos = new System.Collections.Generic.List<string>
@@ -193,6 +203,7 @@ namespace YtDlpGui
             };
 
             AdicionarArgumentoDePlaylist(argumentos);
+            AdicionarArgumentosDeAutenticacao(argumentos);
 
             if (File.Exists(_ffmpegPath))
             {
@@ -212,6 +223,68 @@ namespace YtDlpGui
         private void AdicionarArgumentoDePlaylist(System.Collections.Generic.List<string> argumentos)
         {
             argumentos.Add(chkPlaylist.Checked ? "--yes-playlist" : "--no-playlist");
+        }
+
+        /// <summary>
+        /// Adiciona à lista de argumentos a flag de autenticação por cookies,
+        /// de acordo com a opção escolhida no grupo "Autenticação":
+        /// - "Não usar cookies": nenhum argumento é adicionado (padrão).
+        /// - "Cookies do navegador": adiciona "--cookies-from-browser NOME",
+        ///   lendo os cookies diretamente de um navegador já logado no YouTube.
+        /// - "Arquivo cookies.txt": adiciona "--cookies CAMINHO", usando um
+        ///   arquivo exportado manualmente pelo usuário.
+        /// Isso resolve o erro "Sign in to confirm you're not a bot", que o
+        /// YouTube passou a exibir com frequência para conexões sem cookies.
+        /// </summary>
+        private void AdicionarArgumentosDeAutenticacao(System.Collections.Generic.List<string> argumentos)
+        {
+            if (radCookiesNavegador.Checked)
+            {
+                if (cmbNavegador.SelectedItem is string navegador && !string.IsNullOrWhiteSpace(navegador))
+                {
+                    argumentos.Add("--cookies-from-browser");
+                    argumentos.Add(navegador);
+                }
+            }
+            else if (radCookiesArquivo.Checked)
+            {
+                if (!string.IsNullOrWhiteSpace(txtCookiesArquivo.Text) && File.Exists(txtCookiesArquivo.Text))
+                {
+                    argumentos.Add("--cookies");
+                    argumentos.Add(txtCookiesArquivo.Text);
+                }
+            }
+            // Se "Não usar cookies" estiver marcado, nenhum argumento é adicionado.
+        }
+
+        /// <summary>
+        /// Habilita/desabilita o ComboBox de navegadores e o seletor de arquivo
+        /// de acordo com a opção de autenticação escolhida pelo usuário.
+        /// </summary>
+        private void OpcaoDeAutenticacao_CheckedChanged(object sender, EventArgs e)
+        {
+            cmbNavegador.Enabled = radCookiesNavegador.Checked;
+            txtCookiesArquivo.Enabled = radCookiesArquivo.Checked;
+            btnSelecionarCookies.Enabled = radCookiesArquivo.Checked;
+        }
+
+        /// <summary>
+        /// Abre um diálogo para o usuário selecionar o arquivo cookies.txt
+        /// exportado do navegador (ex.: via extensão "Get cookies.txt").
+        /// </summary>
+        private void btnSelecionarCookies_Click(object sender, EventArgs e)
+        {
+            using var dialogo = new OpenFileDialog
+            {
+                Title = "Selecione o arquivo de cookies exportado do navegador",
+                Filter = "Arquivos de cookies (*.txt)|*.txt|Todos os arquivos (*.*)|*.*",
+                CheckFileExists = true
+            };
+
+            if (dialogo.ShowDialog(this) == DialogResult.OK)
+            {
+                txtCookiesArquivo.Text = dialogo.FileName;
+            }
         }
 
         /// <summary>
@@ -267,7 +340,14 @@ namespace YtDlpGui
         /// Valida os campos obrigatórios antes de iniciar um download:
         /// URL preenchida, pasta de destino válida e yt-dlp.exe presente.
         /// </summary>
-        private bool ValidarEntradas()
+        /// <param name="exigeFfmpeg">
+        /// Quando true (download de MP3, que sempre precisa extrair/converter
+        /// áudio), bloqueia o download se o ffmpeg.exe não for encontrado.
+        /// Quando false (download de MP4), apenas avisa e pergunta se o
+        /// usuário quer continuar mesmo assim — pois muitos vídeos já vêm em
+        /// um único stream MP4 pronto, sem precisar de mesclagem.
+        /// </param>
+        private bool ValidarEntradas(bool exigeFfmpeg)
         {
             if (string.IsNullOrWhiteSpace(txtUrl.Text))
             {
@@ -299,6 +379,37 @@ namespace YtDlpGui
                     "Baixe o yt-dlp.exe (github.com/yt-dlp/yt-dlp/releases) e coloque-o " +
                     "na mesma pasta deste programa.",
                     "yt-dlp.exe não encontrado", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                return false;
+            }
+
+            if (!File.Exists(_ffmpegPath))
+            {
+                if (exigeFfmpeg)
+                {
+                    MessageBox.Show(this,
+                        $"O ffmpeg.exe é obrigatório para extrair áudio em MP3 e não foi encontrado em:\n{_ffmpegPath}\n\n" +
+                        "Baixe o ffmpeg (gyan.dev/ffmpeg/builds) e coloque o ffmpeg.exe " +
+                        "na mesma pasta deste programa.",
+                        "ffmpeg.exe não encontrado", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    return false;
+                }
+
+                var resultado = MessageBox.Show(this,
+                    "O ffmpeg.exe não foi encontrado. Sem ele, vídeos que exigem mesclagem de " +
+                    "faixas separadas podem ser salvos em qualidade reduzida ou com uma extensão " +
+                    "diferente de .mp4 (ex.: .av01). Deseja continuar mesmo assim?",
+                    "ffmpeg.exe não encontrado", MessageBoxButtons.YesNo, MessageBoxIcon.Warning);
+
+                if (resultado != DialogResult.Yes)
+                    return false;
+            }
+
+            if (radCookiesArquivo.Checked &&
+                (string.IsNullOrWhiteSpace(txtCookiesArquivo.Text) || !File.Exists(txtCookiesArquivo.Text)))
+            {
+                MessageBox.Show(this,
+                    "Selecione um arquivo cookies.txt válido, ou escolha outra opção de autenticação.",
+                    "Arquivo de cookies inválido", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 return false;
             }
 
@@ -469,6 +580,13 @@ namespace YtDlpGui
                 AtualizarRotuloEstagio("Mesclando vídeo e áudio...");
             else if (linha.Contains("has already been downloaded"))
                 AtualizarRotuloEstagio("Arquivo já existente, pulando download...");
+
+            if (linha.Contains("Sign in to confirm you") && linha.Contains("not a bot"))
+            {
+                AdicionarStatus("💡 DICA: o YouTube está pedindo confirmação de que você não é um robô. " +
+                                 "Marque uma das opções em \"Autenticação\" (cookies do navegador ou " +
+                                 "arquivo cookies.txt) e tente novamente.");
+            }
         }
 
         /// <summary>
@@ -525,6 +643,7 @@ namespace YtDlpGui
             chkPlaylist.Enabled = !emAndamento;
             btnAtualizarYtDlp.Enabled = !emAndamento;
             btnHistorico.Enabled = !emAndamento;
+            grpAutenticacao.Enabled = !emAndamento;
 
             // O botão Cancelar só faz sentido enquanto há um download em andamento.
             btnCancelar.Enabled = emAndamento;
