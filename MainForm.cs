@@ -64,6 +64,29 @@ namespace YtDlpGui
 
             // Navegador padrão sugerido para leitura de cookies (o mais comum entre os alunos).
             cmbNavegador.SelectedIndex = 0; // "chrome"
+
+            CarregarIconeDaJanela();
+        }
+
+        /// <summary>
+        /// Carrega o icon.ico (copiado para a pasta de saída pelo .csproj) e
+        /// aplica como ícone da janela/barra de tarefas. Se o arquivo não for
+        /// encontrado, mantém o ícone padrão do .NET silenciosamente.
+        /// </summary>
+        private void CarregarIconeDaJanela()
+        {
+            try
+            {
+                string caminhoIcone = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "icon.ico");
+                if (File.Exists(caminhoIcone))
+                {
+                    Icon = new System.Drawing.Icon(caminhoIcone);
+                }
+            }
+            catch
+            {
+                // Ícone é apenas estético; qualquer falha aqui não deve impedir o uso do app.
+            }
         }
 
         /// <summary>

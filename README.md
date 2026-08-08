@@ -14,6 +14,7 @@ YtDlpGui/
 ├── HistoricoForm.cs             # janela de histórico de downloads
 ├── HistoricoForm.Designer.cs    # layout visual da janela de histórico
 ├── GerenciadorHistorico.cs      # persistência do histórico em JSON (%AppData%)
+├── icon.ico                     # ícone do app (janela, taskbar, .exe)
 ├── publicar.ps1                 # script que gera o pacote pronto para distribuir
 ├── LEIA-ME.txt                  # instruções para o usuário final (vai dentro do pacote)
 └── README.md                    # este arquivo (documentação técnica)
@@ -230,7 +231,72 @@ chamado tanto no download de MP4 quanto no de MP3. Além disso,
 `TratarLinhaNaUi` detecta a mensagem de erro específica do YouTube na saída
 do yt-dlp e exibe uma dica no log orientando o uso dessas opções.
 
-## 11. Possíveis melhorias futuras (fora do escopo atual)
+## 12. Visual moderno (Guna.UI2) e ícone customizado
+
+A interface foi modernizada usando a biblioteca **Guna.UI2.WinForms**
+(botões arredondados, campos de texto com foco destacado, grupo de
+autenticação em "card") e um ícone próprio para o app.
+
+### Paleta de cores usada
+
+| Uso                          | Cor        |
+|-------------------------------|------------|
+| Fundo da janela                | `#F7F8FA`  |
+| Cards/campos                   | `#FFFFFF`  |
+| Borda neutra                   | `#E1E4E8`  |
+| Texto principal                | `#1F2937`  |
+| Texto secundário               | `#6B7280`  |
+| Acento (MP4/MP3/foco)          | `#2F6FED`  |
+| Acento (hover)                 | `#255ED1`  |
+| Perigo (Cancelar/Limpar)       | `#EF4444`  |
+| Botão secundário                | `#F3F4F6`  |
+| Estado desabilitado (fundo)     | `#E5E7EB`  |
+| Estado desabilitado (texto)     | `#9CA3AF`  |
+
+Essas cores estão centralizadas como constantes no topo de
+`MainForm.Designer.cs` (`CorFundo`, `CorAcento`, `CorPerigo`, etc.) e em
+`HistoricoForm.Designer.cs` — para trocar a paleta inteira, basta editar
+os valores ali.
+
+O estado **desabilitado** dos botões agora usa `DisabledState.FillColor` /
+`DisabledState.ForeColor` do Guna2Button, corrigindo o problema do texto
+quase invisível (cinza-claro sobre cinza-claro) do WinForms padrão.
+
+### Ícone do aplicativo
+
+Foi gerado um ícone simples (seta de download sobre fundo azul
+arredondado), salvo como `icon.ico` na raiz do projeto:
+
+- Referenciado em `YtDlpGui.csproj` via `<ApplicationIcon>icon.ico</ApplicationIcon>`
+  (ícone do `.exe` no Explorer/taskbar).
+- Copiado para a pasta de saída (`CopyToOutputDirectory`) e carregado em
+  tempo de execução por `CarregarIconeDaJanela()` em `MainForm.cs` e
+  `HistoricoForm.cs` (ícone da janela/barra de tarefas).
+
+Para trocar por um ícone próprio, basta substituir o arquivo
+`icon.ico` (mantendo o mesmo nome) por um `.ico` multi-resolução
+(recomendado: 16, 32, 48 e 256 px).
+
+### Instalando o Guna.UI2.WinForms
+
+O pacote é referenciado via NuGet no `.csproj`. Para restaurar (necessário
+apenas uma vez, ou sempre que trocar de máquina):
+
+```bash
+cd YtDlpGui
+dotnet restore
+```
+
+Isso exige conexão com a internet na primeira vez. O `publicar.ps1` já
+roda o `dotnet publish`, que restaura automaticamente as dependências.
+
+> **Nota:** a API do Guna.UI2.WinForms pode variar ligeiramente entre
+> versões. O projeto está fixado na versão `2.0.4.6` no `.csproj`; se você
+> atualizar a versão do pacote, confira se os nomes de propriedades usados
+> em `MainForm.Designer.cs` (`FillColor`, `BorderRadius`, `HoverState`,
+> `DisabledState`, etc.) continuam válidos antes de compilar em produção.
+
+## 13. Possíveis melhorias futuras (fora do escopo atual)
 
 - Assinatura digital do executável, para eliminar o aviso do SmartScreen.
 - Verificação automática de atualização do próprio programa (não apenas

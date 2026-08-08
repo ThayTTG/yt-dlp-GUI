@@ -127,4 +127,4 @@ Write-Host "Pronto! Pacote gerado em:" -ForegroundColor Green
 Write-Host "  $arquivoZip" -ForegroundColor Green
 Write-Host ""
 Write-Host "Basta enviar esse .zip para qualquer usuário. Ele só precisa extrair" -ForegroundColor Green
-Write-Host "e dar dois cliques em YtDlpGui.exe — nada mais precisa ser instalado." -ForegroundColor Green
+Write-Host "e dar dois cliques em YtDlpGui.exe - nada mais precisa ser instalado." -ForegroundColor Green

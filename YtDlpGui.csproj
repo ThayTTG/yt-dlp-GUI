@@ -10,7 +10,30 @@
     <RootNamespace>YtDlpGui</RootNamespace>
     <ApplicationHighDpiMode>SystemAware</ApplicationHighDpiMode>
     <LangVersion>latest</LangVersion>
+    <!-- Ícone exibido no .exe, no Explorer e na barra de tarefas. -->
+    <ApplicationIcon>icon.ico</ApplicationIcon>
   </PropertyGroup>
+
+  <ItemGroup>
+    <!--
+      Guna.UI2.WinForms: biblioteca de controles com visual moderno
+      (botões arredondados, cores customizáveis, etc.) usada para
+      modernizar a interface do programa.
+
+      IMPORTANTE: rodar "dotnet restore" (ou simplesmente compilar) exige
+      conexão com a internet na primeira vez, para baixar o pacote do NuGet.
+    -->
+    <PackageReference Include="Guna.UI2.WinForms" Version="2.0.4.6" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Garante que o icon.ico seja copiado para a pasta de saída (para
+         ser usado em tempo de execução como Form.Icon, além de já estar
+         embutido no .exe via ApplicationIcon acima). -->
+    <None Include="icon.ico">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
 
   <ItemGroup>
     <!--
