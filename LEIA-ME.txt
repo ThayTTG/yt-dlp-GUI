@@ -2,14 +2,14 @@
  COMO USAR O DOWNLOADER DE VÍDEOS DO YOUTUBE
 ====================================================
 
-Este programa permite baixar vídeos (MP4) ou apenas o áudio (MP3) de
-links do YouTube, sem precisar usar linha de comando.
+Este programa baixa vídeos (MP4) ou apenas o áudio (MP3) de links do
+YouTube, sem precisar usar linha de comando.
 
 --------------------------------------------------
 1) EXTRAIA OS ARQUIVOS
 --------------------------------------------------
-Se você recebeu um arquivo .zip, clique com o botão direito nele e
-escolha "Extrair tudo...". Depois abra a pasta extraída.
+Clique com o botão direito no .zip recebido e escolha "Extrair tudo...".
+Depois abra a pasta extraída.
 
 --------------------------------------------------
 2) ABRA O PROGRAMA
@@ -18,57 +18,79 @@ Dentro da pasta, dê dois cliques em:
 
     YtDlpGui.exe
 
-Não é necessário instalar nada — o programa já vem pronto para uso.
+Não é necessário instalar nada.
 
 O Windows pode exibir um aviso do "Windows Defender SmartScreen" na
 primeira vez que você abrir o programa. Isso é normal para programas
-novos que ainda não têm um certificado digital pago. Para continuar:
-    - Clique em "Mais informações"
-    - Depois clique em "Executar assim mesmo"
+novos sem certificado pago. Clique em "Mais informações" e depois em
+"Executar assim mesmo".
 
 --------------------------------------------------
-3) BAIXE UM VÍDEO OU ÁUDIO
+3) CONHECENDO A TELA
 --------------------------------------------------
-1. Cole o link do vídeo do YouTube no campo de URL.
-2. Confira (ou altere, com o botão "Selecionar Pasta") onde o arquivo
-   será salvo. Por padrão, é a pasta "Downloads" do seu usuário.
-3. Clique em:
-     - "Baixar MP4 (Vídeo)"  -> baixa o vídeo completo
-     - "Baixar MP3 (Áudio)"  -> baixa apenas o áudio, em MP3
-4. Acompanhe o andamento na barra de progresso e na caixa de texto
-   abaixo dela.
-5. Se precisar interromper, clique em "Cancelar".
+O programa é dividido em telas, acessadas pelos ícones da barra
+lateral esquerda:
+
+  [Logo, no topo]   -> Volta para a tela inicial (Home)
+  [Relógio]         -> Histórico de tudo que você já baixou
+  [Pasta]           -> Onde os arquivos são salvos
+  [Engrenagem]      -> Configurações (cookies, atualizar o programa)
+
+Na parte de baixo da janela sempre aparece o andamento do download
+atual (mensagem + barra de progresso), não importa em qual tela você
+esteja. O círculo vermelho com um "X" cancela o download em andamento.
 
 --------------------------------------------------
-OUTRAS FUNÇÕES
+4) BAIXANDO UM VÍDEO OU ÁUDIO
 --------------------------------------------------
-- "Baixar playlist inteira": marque esta opção ANTES de clicar em
-  Baixar se o link colado for de uma playlist e você quiser baixar
-  todos os vídeos dela (por padrão, baixa só o vídeo do link).
-- "Histórico": mostra a lista de tudo que você já baixou, com data,
-  tipo, nome do arquivo e pasta onde foi salvo. É possível abrir a
-  pasta de um item diretamente por ali.
-- "Atualizar yt-dlp": o YouTube muda com frequência, então de vez em
-  quando é bom clicar aqui para atualizar o componente responsável
-  pelo download (isso não altera o restante do programa).
-- "Autenticação": se aparecer uma mensagem dizendo algo como "Sign in
-  to confirm you're not a bot" (o YouTube pedindo para confirmar que
-  você não é um robô), marque uma destas opções ANTES de baixar de
-  novo:
-    - "Usar cookies do navegador": escolha o navegador em que você
-      está logado no YouTube (Chrome, Edge, Firefox, etc.). O
-      programa lê os cookies automaticamente, sem você precisar
-      exportar nada.
-    - "Usar arquivo cookies.txt": se preferir, exporte os cookies do
-      seu navegador (existem extensões gratuitas para isso, como
-      "Get cookies.txt") e selecione o arquivo pelo botão
-      "Selecionar...".
+Na tela inicial (Home):
+
+1. Cole o link do vídeo do YouTube no campo indicado.
+2. Clique em "Baixar .MP4" para o vídeo completo, ou
+   "Baixar .MP3" para apenas o áudio.
+3. Se o link for de uma playlist e você quiser baixar todos os
+   vídeos dela, marque "Baixar Playlist" ANTES de clicar em baixar
+   (por padrão, baixa só o vídeo do link).
+4. Acompanhe o progresso na barra inferior. Você pode navegar para
+   outras telas enquanto o download continua rodando.
+5. Quando terminar (ou se der algum erro), o Windows mostra uma
+   notificação avisando — mesmo que a janela esteja minimizada.
+
+--------------------------------------------------
+5) ONDE OS ARQUIVOS SÃO SALVOS
+--------------------------------------------------
+Vá na tela da PASTA (ícone de pasta na barra lateral) para ver e
+alterar o local de salvamento. Por padrão, é a pasta "Downloads" do
+seu usuário. Clique em "Alterar Local" para escolher outra pasta.
+
+--------------------------------------------------
+6) HISTÓRICO
+--------------------------------------------------
+Vá na tela de HISTÓRICO (ícone de relógio) para ver tudo que você já
+baixou: tipo, nome do arquivo e data. Dê duplo clique em um item (ou
+clique com o botão direito) para abrir a pasta onde ele foi salvo.
+O botão "Limpar Histórico" apaga essa lista (não apaga os arquivos
+já baixados, só o registro).
+
+--------------------------------------------------
+7) CONFIGURAÇÕES
+--------------------------------------------------
+Vá na tela de CONFIGURAÇÕES (ícone de engrenagem) se:
+
+- O YouTube pedir para "confirmar que você não é um robô": marque
+  "Usar cookies do navegador" e escolha o navegador em que você está
+  logado no YouTube (Chrome, Edge, Firefox, etc.) — o programa lê os
+  cookies automaticamente. Ou, se preferir, marque "Usar arquivo
+  cookies.txt" e selecione um arquivo exportado do navegador.
+- Os downloads pararem de funcionar do dia para a noite: clique em
+  "Atualizar yt-dlp". O YouTube muda o funcionamento do site de vez
+  em quando, e isso corrige a maioria dos problemas.
 
 --------------------------------------------------
 IMPORTANTE
 --------------------------------------------------
 - Mantenha os arquivos YtDlpGui.exe, yt-dlp.exe e ffmpeg.exe sempre
-  juntos, na mesma pasta — o programa depende deles para funcionar.
+  juntos, na mesma pasta.
 - Use este programa apenas para baixar conteúdo que você tem o
   direito de baixar (vídeos próprios, de domínio público, com licença
   livre, aulas liberadas pelo professor, etc.), respeitando os Termos
@@ -79,12 +101,10 @@ PROBLEMAS COMUNS
 --------------------------------------------------
 - "yt-dlp.exe não encontrado": verifique se o arquivo yt-dlp.exe está
   na mesma pasta do YtDlpGui.exe.
-- "Sign in to confirm you're not a bot": use a seção "Autenticação"
-  descrita acima (cookies do navegador é a forma mais simples).
-- Download falha ou trava: clique em "Atualizar yt-dlp" e tente
-  novamente — o YouTube muda o funcionamento do site com frequência.
-- Antivírus bloqueando: alguns antivírus podem alertar sobre o
-  yt-dlp.exe por ele baixar arquivos da internet. Isso é um
-  comportamento normal da ferramenta (é um projeto de código aberto
-  muito usado); se preferir, você pode verificar o arquivo no
-  VirusTotal antes de usá-lo.
+- Pedido de confirmação de robô: veja a seção "Configurações" acima.
+- Download falha ou trava: vá em Configurações e clique em
+  "Atualizar yt-dlp", depois tente novamente.
+- Antivírus bloqueando: alguns antivírus alertam sobre o yt-dlp.exe
+  por ele baixar arquivos da internet. É um comportamento normal
+  dessa ferramenta (projeto de código aberto muito usado); se
+  preferir, verifique o arquivo no VirusTotal antes de usá-lo.

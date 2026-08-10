@@ -8,71 +8,61 @@ using System.Windows.Forms;
 namespace YtDlpGui
 {
     /// <summary>
-    /// Formulário principal da aplicação.
-    /// Fornece uma interface amigável para o utilitário de linha de comando yt-dlp,
-    /// permitindo baixar vídeos (MP4) ou extrair áudio (MP3) do YouTube sem que o
-    /// aluno precise abrir o CMD/PowerShell.
+    /// Formulário principal: barra lateral de navegação (Home, Histórico,
+    /// Pasta, Configurações) + barra de status inferior com progresso.
+    /// Não exibe a saída bruta do yt-dlp (sem "terminal") — tudo é traduzido
+    /// para mensagens curtas e amigáveis, e o download avisa via notificação
+    /// do Windows quando termina ou falha.
     /// </summary>
     public partial class MainForm : Form
     {
-        // Caminho completo esperado para o executável do yt-dlp.
-        // Por padrão, o aplicativo procura o yt-dlp.exe na MESMA PASTA do .exe da aplicação.
         private readonly string _ytDlpPath;
-
-        // Caminho completo esperado para o executável do ffmpeg (necessário para
-        // converter/mesclar áudio e vídeo, e obrigatório para gerar MP3).
         private readonly string _ffmpegPath;
-
-        // Pasta onde o ffmpeg.exe está localizado (usada no parâmetro --ffmpeg-location).
         private readonly string _ffmpegDir;
+        private readonly string _pastaAssets;
 
-        // Referência ao processo em execução, usada pelo botão "Cancelar".
         private Process? _processoAtual;
-
-        // Indica se o processo atual foi encerrado a pedido do usuário
-        // (usado para exibir uma mensagem adequada em vez de "erro").
         private bool _canceladoPeloUsuario;
-
-        // Caminho do arquivo final identificado a partir da saída do yt-dlp
-        // (linhas "Destination: ..."), usado para registrar o título no histórico.
         private string? _ultimoArquivoBaixado;
+        private string? _ultimoErro;
+        private bool _avisoBotMostrado;
 
-        // Expressão regular para capturar a porcentagem de progresso que o yt-dlp
-        // imprime no formato: "[download]  45.2% of ..."
         private static readonly Regex RegexProgresso =
             new Regex(@"\[download\]\s+(\d{1,3}(?:\.\d+)?)%", RegexOptions.Compiled);
-
-        // Expressão regular para capturar o caminho do arquivo final que o
-        // yt-dlp está gravando, a partir de linhas como:
-        // "[download] Destination: C:\...\video.mp4"
-        // "[ExtractAudio] Destination: C:\...\audio.mp3"
         private static readonly Regex RegexDestino =
             new Regex(@"Destination:\s*(.+)$", RegexOptions.Compiled);
+        private static readonly Regex RegexErro =
+            new Regex(@"^ERROR:\s*(.+)$", RegexOptions.Compiled);
 
         public MainForm()
         {
             InitializeComponent();
 
-            // yt-dlp.exe e ffmpeg.exe devem estar na mesma pasta do executável da aplicação.
             string pastaApp = AppDomain.CurrentDomain.BaseDirectory;
             _ytDlpPath = Path.Combine(pastaApp, "yt-dlp.exe");
             _ffmpegPath = Path.Combine(pastaApp, "ffmpeg.exe");
             _ffmpegDir = pastaApp;
+            _pastaAssets = Path.Combine(pastaApp, "Assets");
 
-            // Define uma pasta padrão de salvamento (Downloads do usuário).
             txtSavePath.Text = ObterPastaDownloadsPadrao();
-
-            // Navegador padrão sugerido para leitura de cookies (o mais comum entre os alunos).
             cmbNavegador.SelectedIndex = 0; // "chrome"
 
             CarregarIconeDaJanela();
+            CarregarImagens();
+            ConfigurarNotificacoes();
+            MostrarPagina("home");
         }
 
-        /// <summary>
-        /// Carrega o icon.ico (copiado para a pasta de saída pelo .csproj) e
-        /// aplica como ícone da janela/barra de tarefas. Se o arquivo não for
-        /// encontrado, mantém o ícone padrão do .NET silenciosamente.
-        /// </summary>
+        protected override void OnLoad(EventArgs e)
+        {
+            base.OnLoad(e);
+            VerificarDependenciasSilenciosamente();
+        }
+
+        // ---------------------------------------------------------------
+        // Configuração inicial (ícone, imagens, notificações)
+        // ---------------------------------------------------------------
+
         private void CarregarIconeDaJanela()
         {
             try
@@ -85,24 +75,97 @@ namespace YtDlpGui
             }
             catch
             {
-                // Ícone é apenas estético; qualquer falha aqui não deve impedir o uso do app.
+                // Ícone é apenas estético.
             }
         }
 
-        /// <summary>
-        /// Evento disparado quando o formulário termina de carregar.
-        /// Usado para validar se as dependências externas (yt-dlp/ffmpeg) existem.
-        /// </summary>
-        protected override void OnLoad(EventArgs e)
+        /// <summary>Carrega uma imagem da pasta Assets, ou null se não existir/falhar.</summary>
+        private System.Drawing.Image? CarregarImagem(string nomeArquivo)
         {
-            base.OnLoad(e);
-            VerificarDependencias();
+            try
+            {
+                string caminho = Path.Combine(_pastaAssets, nomeArquivo);
+                return File.Exists(caminho) ? System.Drawing.Image.FromFile(caminho) : null;
+            }
+            catch
+            {
+                return null;
+            }
         }
 
-        /// <summary>
-        /// Retorna o caminho da pasta "Downloads" do usuário atual, com fallback
-        /// para a área de trabalho caso não seja possível determiná-la.
-        /// </summary>
+        private void CarregarImagens()
+        {
+            picLogo.Image = CarregarImagem("logo_transparente.png");
+            picLogoGrande.Image = CarregarImagem("logo_home_grande.png");
+            picIlustracaoPasta.Image = CarregarImagem("ilustracao_pasta.png");
+
+            AtualizarIconesDeNavegacao("home");
+        }
+
+        /// <summary>Troca os ícones da barra lateral entre azul (ativo) e branco (inativo).</summary>
+        private void AtualizarIconesDeNavegacao(string paginaAtiva)
+        {
+            picNavHistorico.Image = CarregarImagem(paginaAtiva == "historico" ? "nav_historico_azul.png" : "nav_historico_branco.png");
+            picNavPasta.Image = CarregarImagem(paginaAtiva == "pasta" ? "nav_pasta_azul.png" : "nav_pasta_branco.png");
+            picNavConfig.Image = CarregarImagem(paginaAtiva == "config" ? "nav_config_azul.png" : "nav_config_branco.png");
+        }
+
+        private void ConfigurarNotificacoes()
+        {
+            try
+            {
+                notifyIcon1.Icon = Icon;
+                notifyIcon1.Visible = true;
+            }
+            catch
+            {
+                // Notificações são um extra; se falhar, o app continua funcionando normalmente.
+            }
+        }
+
+        private void MostrarNotificacao(string titulo, string mensagem, bool erro = false)
+        {
+            try
+            {
+                notifyIcon1.BalloonTipIcon = erro ? ToolTipIcon.Error : ToolTipIcon.Info;
+                notifyIcon1.BalloonTipTitle = titulo;
+                notifyIcon1.BalloonTipText = mensagem;
+                notifyIcon1.ShowBalloonTip(5000);
+            }
+            catch
+            {
+                // Se a notificação falhar por qualquer motivo, apenas ignora.
+            }
+        }
+
+        // ---------------------------------------------------------------
+        // Navegação entre páginas
+        // ---------------------------------------------------------------
+
+        private void MostrarPagina(string pagina)
+        {
+            pnlHome.Visible = pagina == "home";
+            pnlHistorico.Visible = pagina == "historico";
+            pnlPasta.Visible = pagina == "pasta";
+            pnlConfiguracoes.Visible = pagina == "config";
+
+            AtualizarIconesDeNavegacao(pagina);
+
+            if (pagina == "historico")
+            {
+                CarregarHistorico();
+            }
+        }
+
+        private void picLogo_Click(object sender, EventArgs e) => MostrarPagina("home");
+        private void picNavHistorico_Click(object sender, EventArgs e) => MostrarPagina("historico");
+        private void picNavPasta_Click(object sender, EventArgs e) => MostrarPagina("pasta");
+        private void picNavConfig_Click(object sender, EventArgs e) => MostrarPagina("config");
+
+        // ---------------------------------------------------------------
+        // Página Pasta (local de salvamento)
+        // ---------------------------------------------------------------
+
         private static string ObterPastaDownloadsPadrao()
         {
             try
@@ -119,42 +182,7 @@ namespace YtDlpGui
             }
         }
 
-        /// <summary>
-        /// Verifica se o yt-dlp.exe e o ffmpeg.exe existem na pasta da aplicação
-        /// e exibe um aviso no log de status caso algo esteja faltando.
-        /// Não impede a abertura do programa, apenas avisa o usuário.
-        /// </summary>
-        private void VerificarDependencias()
-        {
-            AdicionarStatus("Verificando dependências...");
-
-            if (!File.Exists(_ytDlpPath))
-            {
-                AdicionarStatus($"⚠️ ATENÇÃO: yt-dlp.exe não encontrado em: {_ytDlpPath}");
-                AdicionarStatus("Coloque o arquivo yt-dlp.exe na mesma pasta deste programa antes de baixar.");
-            }
-            else
-            {
-                AdicionarStatus("✔ yt-dlp.exe encontrado.");
-            }
-
-            if (!File.Exists(_ffmpegPath))
-            {
-                AdicionarStatus($"⚠️ ATENÇÃO: ffmpeg.exe não encontrado em: {_ffmpegPath}");
-                AdicionarStatus("A conversão para MP3 e a mesclagem de vídeo+áudio em MP4 podem falhar sem o ffmpeg.");
-            }
-            else
-            {
-                AdicionarStatus("✔ ffmpeg.exe encontrado.");
-            }
-
-            AdicionarStatus("Pronto para uso. Cole a URL do vídeo e escolha uma opção de download.");
-        }
-
-        /// <summary>
-        /// Abre o diálogo de seleção de pasta para o usuário escolher o local de salvamento.
-        /// </summary>
-        private void btnSelectFolder_Click(object sender, EventArgs e)
+        private void btnAlterarLocal_Click(object sender, EventArgs e)
         {
             using var dialogo = new FolderBrowserDialog
             {
@@ -169,10 +197,10 @@ namespace YtDlpGui
             }
         }
 
-        /// <summary>
-        /// Botão "Baixar MP4 (Vídeo)": baixa a melhor qualidade de vídeo+áudio
-        /// disponíveis, mesclando-os em um único arquivo .mp4.
-        /// </summary>
+        // ---------------------------------------------------------------
+        // Página Home (downloads)
+        // ---------------------------------------------------------------
+
         private async void btnDownloadMp4_Click(object sender, EventArgs e)
         {
             if (!ValidarEntradas(exigeFfmpeg: false))
@@ -181,12 +209,6 @@ namespace YtDlpGui
             var argumentos = new System.Collections.Generic.List<string>
             {
                 txtUrl.Text.Trim(),
-                // Prioriza vídeo em MP4 (H.264) + áudio em M4A (AAC), que são
-                // nativamente compatíveis com o container MP4 e não deixam
-                // "sobras" com extensão de codec (ex.: .av01) caso o ffmpeg
-                // não esteja disponível para remuxar/mesclar. Só cai para
-                // "bestvideo+bestaudio" (que pode trazer AV1/VP9 + Opus) se
-                // não houver opção em MP4/M4A.
                 "-f", "bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/bestvideo+bestaudio/best",
                 "--merge-output-format", "mp4",
                 "--newline",
@@ -203,13 +225,9 @@ namespace YtDlpGui
                 argumentos.Add(_ffmpegDir);
             }
 
-            await ExecutarYtDlpAsync(argumentos, "Download de vídeo (MP4)", "MP4");
+            await ExecutarYtDlpAsync(argumentos, "MP4");
         }
 
-        /// <summary>
-        /// Botão "Baixar MP3 (Áudio)": extrai apenas o áudio do vídeo e converte
-        /// para o formato MP3 usando o ffmpeg.
-        /// </summary>
         private async void btnDownloadMp3_Click(object sender, EventArgs e)
         {
             if (!ValidarEntradas(exigeFfmpeg: true))
@@ -218,7 +236,7 @@ namespace YtDlpGui
             var argumentos = new System.Collections.Generic.List<string>
             {
                 txtUrl.Text.Trim(),
-                "-x", // extrai apenas o áudio
+                "-x",
                 "--audio-format", "mp3",
                 "--newline",
                 "-P", txtSavePath.Text,
@@ -234,31 +252,14 @@ namespace YtDlpGui
                 argumentos.Add(_ffmpegDir);
             }
 
-            await ExecutarYtDlpAsync(argumentos, "Download de áudio (MP3)", "MP3");
+            await ExecutarYtDlpAsync(argumentos, "MP3");
         }
 
-        /// <summary>
-        /// Adiciona à lista de argumentos a flag correta de playlist, de acordo
-        /// com o estado do checkbox "Baixar playlist inteira":
-        /// - Desmarcado (padrão): "--no-playlist", baixa somente o vídeo do link.
-        /// - Marcado: "--yes-playlist", baixa todos os vídeos da playlist do link.
-        /// </summary>
         private void AdicionarArgumentoDePlaylist(System.Collections.Generic.List<string> argumentos)
         {
             argumentos.Add(chkPlaylist.Checked ? "--yes-playlist" : "--no-playlist");
         }
 
-        /// <summary>
-        /// Adiciona à lista de argumentos a flag de autenticação por cookies,
-        /// de acordo com a opção escolhida no grupo "Autenticação":
-        /// - "Não usar cookies": nenhum argumento é adicionado (padrão).
-        /// - "Cookies do navegador": adiciona "--cookies-from-browser NOME",
-        ///   lendo os cookies diretamente de um navegador já logado no YouTube.
-        /// - "Arquivo cookies.txt": adiciona "--cookies CAMINHO", usando um
-        ///   arquivo exportado manualmente pelo usuário.
-        /// Isso resolve o erro "Sign in to confirm you're not a bot", que o
-        /// YouTube passou a exibir com frequência para conexões sem cookies.
-        /// </summary>
         private void AdicionarArgumentosDeAutenticacao(System.Collections.Generic.List<string> argumentos)
         {
             if (radCookiesNavegador.Checked)
@@ -277,13 +278,346 @@ namespace YtDlpGui
                     argumentos.Add(txtCookiesArquivo.Text);
                 }
             }
-            // Se "Não usar cookies" estiver marcado, nenhum argumento é adicionado.
+        }
+
+        private void btnCancelar_Click(object sender, EventArgs e)
+        {
+            if (_processoAtual is null || _processoAtual.HasExited)
+                return;
+
+            try
+            {
+                _canceladoPeloUsuario = true;
+                AtualizarStatus("Cancelando...");
+                _processoAtual.Kill(entireProcessTree: true);
+            }
+            catch (Exception ex)
+            {
+                AtualizarStatus("Não foi possível cancelar.");
+                RegistrarLog("Erro ao cancelar: " + ex.Message);
+            }
+        }
+
+        private bool ValidarEntradas(bool exigeFfmpeg)
+        {
+            if (string.IsNullOrWhiteSpace(txtUrl.Text))
+            {
+                MessageBox.Show(this, "Cole a URL do vídeo antes de continuar.",
+                    "URL não informada", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                MostrarPagina("home");
+                txtUrl.Focus();
+                return false;
+            }
+
+            if (!Uri.TryCreate(txtUrl.Text.Trim(), UriKind.Absolute, out _))
+            {
+                MessageBox.Show(this, "A URL informada não parece ser válida.",
+                    "URL inválida", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                MostrarPagina("home");
+                txtUrl.Focus();
+                return false;
+            }
+
+            if (string.IsNullOrWhiteSpace(txtSavePath.Text) || !Directory.Exists(txtSavePath.Text))
+            {
+                MessageBox.Show(this, "Escolha uma pasta de destino válida na tela \"Pasta\".",
+                    "Pasta inválida", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                MostrarPagina("pasta");
+                return false;
+            }
+
+            if (!File.Exists(_ytDlpPath))
+            {
+                MessageBox.Show(this,
+                    $"Não foi possível encontrar o yt-dlp.exe em:\n{_ytDlpPath}\n\n" +
+                    "Coloque o arquivo yt-dlp.exe na mesma pasta deste programa.",
+                    "yt-dlp.exe não encontrado", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                return false;
+            }
+
+            if (!File.Exists(_ffmpegPath))
+            {
+                if (exigeFfmpeg)
+                {
+                    MessageBox.Show(this,
+                        "O ffmpeg.exe é obrigatório para baixar em MP3 e não foi encontrado.\n\n" +
+                        "Coloque o arquivo ffmpeg.exe na mesma pasta deste programa.",
+                        "ffmpeg.exe não encontrado", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    return false;
+                }
+
+                var resultado = MessageBox.Show(this,
+                    "O ffmpeg.exe não foi encontrado. Alguns vídeos podem baixar em qualidade " +
+                    "reduzida sem ele. Deseja continuar mesmo assim?",
+                    "ffmpeg.exe não encontrado", MessageBoxButtons.YesNo, MessageBoxIcon.Warning);
+
+                if (resultado != DialogResult.Yes)
+                    return false;
+            }
+
+            if (radCookiesArquivo.Checked &&
+                (string.IsNullOrWhiteSpace(txtCookiesArquivo.Text) || !File.Exists(txtCookiesArquivo.Text)))
+            {
+                MessageBox.Show(this,
+                    "Selecione um arquivo cookies.txt válido na tela \"Configurações\".",
+                    "Arquivo de cookies inválido", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                MostrarPagina("config");
+                return false;
+            }
+
+            return true;
         }
 
         /// <summary>
-        /// Habilita/desabilita o ComboBox de navegadores e o seletor de arquivo
-        /// de acordo com a opção de autenticação escolhida pelo usuário.
+        /// Executa o yt-dlp.exe de forma assíncrona e oculta. Não expõe a
+        /// saída bruta ao usuário — apenas um status curto + porcentagem.
+        /// Toda a saída é gravada silenciosamente em log.txt para suporte.
         /// </summary>
+        private async System.Threading.Tasks.Task ExecutarYtDlpAsync(
+            System.Collections.Generic.List<string> argumentos, string tipoParaHistorico)
+        {
+            _canceladoPeloUsuario = false;
+            _ultimoArquivoBaixado = null;
+            _ultimoErro = null;
+            _avisoBotMostrado = false;
+
+            DefinirEstadoDownloadEmAndamento(true);
+            AtualizarProgresso(0);
+            AtualizarStatus("Iniciando download...");
+            RegistrarLog($"===== Início: {tipoParaHistorico} | {txtUrl.Text.Trim()} =====");
+
+            var psi = new ProcessStartInfo
+            {
+                FileName = _ytDlpPath,
+                UseShellExecute = false,
+                CreateNoWindow = true,
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                StandardOutputEncoding = Encoding.UTF8,
+                StandardErrorEncoding = Encoding.UTF8,
+                WorkingDirectory = AppDomain.CurrentDomain.BaseDirectory
+            };
+
+            foreach (var arg in argumentos)
+                psi.ArgumentList.Add(arg);
+
+            using var processo = new Process { StartInfo = psi, EnableRaisingEvents = true };
+            processo.OutputDataReceived += (s, e) => ProcessarLinhaDeSaida(e.Data);
+            processo.ErrorDataReceived += (s, e) => ProcessarLinhaDeSaida(e.Data);
+
+            try
+            {
+                _processoAtual = processo;
+                processo.Start();
+                processo.BeginOutputReadLine();
+                processo.BeginErrorReadLine();
+
+                await processo.WaitForExitAsync();
+
+                if (_canceladoPeloUsuario)
+                {
+                    AtualizarStatus("Download cancelado.");
+                }
+                else if (processo.ExitCode == 0)
+                {
+                    if (string.IsNullOrEmpty(tipoParaHistorico))
+                    {
+                        // Ação sem histórico associado (ex.: "yt-dlp -U").
+                        AtualizarStatus("Atualização concluída!");
+                        MostrarNotificacao("yt-dlp atualizado", "O yt-dlp foi verificado/atualizado com sucesso.");
+                    }
+                    else
+                    {
+                        AtualizarStatus("Download concluído!");
+                        AtualizarProgresso(100);
+
+                        string nomeArquivo = string.IsNullOrEmpty(_ultimoArquivoBaixado)
+                            ? "(nome não identificado)"
+                            : Path.GetFileName(_ultimoArquivoBaixado);
+
+                        GerenciadorHistorico.Adicionar(new HistoricoItem
+                        {
+                            DataHora = DateTime.Now,
+                            Tipo = tipoParaHistorico,
+                            Titulo = nomeArquivo,
+                            Pasta = txtSavePath.Text,
+                            Url = txtUrl.Text.Trim()
+                        });
+
+                        MostrarNotificacao("Download concluído", nomeArquivo);
+                    }
+                }
+                else
+                {
+                    string mensagem = TraduzirErro(_ultimoErro);
+                    AtualizarStatus("Falha no download.");
+                    MostrarNotificacao("Falha no download", mensagem, erro: true);
+                    MessageBox.Show(this, mensagem, "Falha no download", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                }
+            }
+            catch (System.ComponentModel.Win32Exception exWin32)
+            {
+                AtualizarStatus("Erro ao iniciar o yt-dlp.");
+                RegistrarLog("Erro Win32: " + exWin32.Message);
+                MessageBox.Show(this, "Não foi possível iniciar o yt-dlp.exe: " + exWin32.Message,
+                    "Erro", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+            catch (Exception ex)
+            {
+                AtualizarStatus("Erro inesperado.");
+                RegistrarLog("Erro inesperado: " + ex.Message);
+            }
+            finally
+            {
+                _processoAtual = null;
+                DefinirEstadoDownloadEmAndamento(false);
+            }
+        }
+
+        /// <summary>Traduz o erro mais comum do yt-dlp para uma frase amigável.</summary>
+        private static string TraduzirErro(string? erroBruto)
+        {
+            if (string.IsNullOrWhiteSpace(erroBruto))
+                return "Ocorreu um erro durante o download. Tente novamente.";
+
+            if (erroBruto.Contains("Sign in to confirm") && erroBruto.Contains("not a bot"))
+            {
+                return "O YouTube pediu confirmação de que você não é um robô. " +
+                       "Vá em \"Configurações\" e ative os cookies do navegador ou um arquivo cookies.txt.";
+            }
+
+            if (erroBruto.Contains("ffmpeg"))
+            {
+                return "Houve um problema relacionado ao ffmpeg. Verifique se o ffmpeg.exe " +
+                       "está na mesma pasta do programa.";
+            }
+
+            if (erroBruto.Contains("Video unavailable") || erroBruto.Contains("This video is unavailable"))
+            {
+                return "Este vídeo não está mais disponível ou foi removido.";
+            }
+
+            if (erroBruto.Contains("Private video"))
+            {
+                return "Este vídeo é privado e não pode ser baixado.";
+            }
+
+            return "Ocorreu um erro: " + erroBruto;
+        }
+
+        private void ProcessarLinhaDeSaida(string? linha)
+        {
+            if (string.IsNullOrWhiteSpace(linha))
+                return;
+
+            if (InvokeRequired)
+            {
+                BeginInvoke(new Action(() => TratarLinha(linha)));
+            }
+            else
+            {
+                TratarLinha(linha);
+            }
+        }
+
+        private void TratarLinha(string linha)
+        {
+            RegistrarLog(linha);
+
+            var matchProgresso = RegexProgresso.Match(linha);
+            if (matchProgresso.Success && double.TryParse(
+                    matchProgresso.Groups[1].Value,
+                    System.Globalization.NumberStyles.Any,
+                    System.Globalization.CultureInfo.InvariantCulture,
+                    out double percentual))
+            {
+                AtualizarProgresso(percentual);
+                AtualizarStatus($"Baixando... {percentual:0}%");
+            }
+
+            var matchDestino = RegexDestino.Match(linha);
+            if (matchDestino.Success)
+            {
+                _ultimoArquivoBaixado = matchDestino.Groups[1].Value.Trim();
+            }
+
+            if (linha.Contains("[ExtractAudio]") || linha.Contains("Extracting audio"))
+                AtualizarStatus("Convertendo para MP3...");
+            else if (linha.Contains("[Merger]") || linha.Contains("Merging formats"))
+                AtualizarStatus("Finalizando arquivo...");
+            else if (linha.Contains("Extracting URL"))
+                AtualizarStatus("Processando URL...");
+            else if (linha.Contains("has already been downloaded"))
+                AtualizarStatus("Arquivo já existe, pulando...");
+
+            var matchErro = RegexErro.Match(linha);
+            if (matchErro.Success)
+            {
+                _ultimoErro = matchErro.Groups[1].Value.Trim();
+            }
+
+            if (!_avisoBotMostrado && linha.Contains("Sign in to confirm") && linha.Contains("not a bot"))
+            {
+                _avisoBotMostrado = true;
+            }
+        }
+
+        private void AtualizarStatus(string texto)
+        {
+            lblStatus.Text = texto;
+        }
+
+        private void AtualizarProgresso(double percentual)
+        {
+            int valor = Math.Clamp((int)Math.Round(percentual), 0, 100);
+            progressBar1.Value = valor;
+            lblProgressPercent.Text = $"{valor}%";
+        }
+
+        /// <summary>
+        /// Grava uma linha no log de suporte (%AppData%\YtDlpGui\log.txt),
+        /// sem nunca exibir isso na interface. Falhas de escrita são ignoradas.
+        /// </summary>
+        private static void RegistrarLog(string linha)
+        {
+            try
+            {
+                string pastaDados = Path.Combine(
+                    Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "YtDlpGui");
+                Directory.CreateDirectory(pastaDados);
+                string caminho = Path.Combine(pastaDados, "log.txt");
+                File.AppendAllText(caminho, $"[{DateTime.Now:HH:mm:ss}] {linha}{Environment.NewLine}");
+            }
+            catch
+            {
+                // Log é apenas para suporte; falha ao escrever não deve afetar o app.
+            }
+        }
+
+        private void DefinirEstadoDownloadEmAndamento(bool emAndamento)
+        {
+            btnDownloadMp4.Enabled = !emAndamento;
+            btnDownloadMp3.Enabled = !emAndamento;
+            txtUrl.Enabled = !emAndamento;
+            chkPlaylist.Enabled = !emAndamento;
+            btnAlterarLocal.Enabled = !emAndamento;
+            btnAtualizarYtDlp.Enabled = !emAndamento;
+            radSemCookies.Enabled = !emAndamento;
+            radCookiesNavegador.Enabled = !emAndamento;
+            radCookiesArquivo.Enabled = !emAndamento;
+            cmbNavegador.Enabled = !emAndamento && radCookiesNavegador.Checked;
+            txtCookiesArquivo.Enabled = !emAndamento && radCookiesArquivo.Checked;
+            btnSelecionarCookies.Enabled = !emAndamento && radCookiesArquivo.Checked;
+
+            btnCancelar.Enabled = emAndamento;
+
+            Cursor = emAndamento ? Cursors.AppStarting : Cursors.Default;
+        }
+
+        // ---------------------------------------------------------------
+        // Página Configurações (autenticação + atualizar yt-dlp)
+        // ---------------------------------------------------------------
+
         private void OpcaoDeAutenticacao_CheckedChanged(object sender, EventArgs e)
         {
             cmbNavegador.Enabled = radCookiesNavegador.Checked;
@@ -291,10 +625,6 @@ namespace YtDlpGui
             btnSelecionarCookies.Enabled = radCookiesArquivo.Checked;
         }
 
-        /// <summary>
-        /// Abre um diálogo para o usuário selecionar o arquivo cookies.txt
-        /// exportado do navegador (ex.: via extensão "Get cookies.txt").
-        /// </summary>
         private void btnSelecionarCookies_Click(object sender, EventArgs e)
         {
             using var dialogo = new OpenFileDialog
@@ -310,374 +640,90 @@ namespace YtDlpGui
             }
         }
 
-        /// <summary>
-        /// Botão "Cancelar": encerra o processo do yt-dlp em execução (e seus
-        /// processos filhos, como o ffmpeg) de forma imediata.
-        /// </summary>
-        private void btnCancelar_Click(object sender, EventArgs e)
-        {
-            if (_processoAtual is null || _processoAtual.HasExited)
-                return;
-
-            try
-            {
-                AdicionarStatus("⏹ Cancelando o download a pedido do usuário...");
-                _canceladoPeloUsuario = true;
-                _processoAtual.Kill(entireProcessTree: true);
-            }
-            catch (Exception ex)
-            {
-                AdicionarStatus($"❌ Não foi possível cancelar o processo: {ex.Message}");
-            }
-        }
-
-        /// <summary>
-        /// Botão "Histórico": abre a janela com a lista de downloads já realizados.
-        /// </summary>
-        private void btnHistorico_Click(object sender, EventArgs e)
-        {
-            using var form = new HistoricoForm();
-            form.ShowDialog(this);
-        }
-
-        /// <summary>
-        /// Botão "Atualizar yt-dlp": roda "yt-dlp.exe -U", que baixa e aplica a
-        /// versão mais recente do próprio yt-dlp. O YouTube muda com frequência,
-        /// e manter o yt-dlp atualizado evita que os downloads passem a falhar.
-        /// </summary>
         private async void btnAtualizarYtDlp_Click(object sender, EventArgs e)
         {
             if (!File.Exists(_ytDlpPath))
             {
-                MessageBox.Show(this,
-                    $"Não foi possível encontrar o yt-dlp.exe em:\n{_ytDlpPath}",
+                MessageBox.Show(this, $"Não foi possível encontrar o yt-dlp.exe em:\n{_ytDlpPath}",
                     "yt-dlp.exe não encontrado", MessageBoxButtons.OK, MessageBoxIcon.Error);
                 return;
             }
 
-            var argumentos = new System.Collections.Generic.List<string> { "-U" };
-            await ExecutarYtDlpAsync(argumentos, "Verificação de atualização do yt-dlp");
+            await ExecutarYtDlpAsync(new System.Collections.Generic.List<string> { "-U" }, tipoParaHistorico: "");
         }
 
-        /// <summary>
-        /// Valida os campos obrigatórios antes de iniciar um download:
-        /// URL preenchida, pasta de destino válida e yt-dlp.exe presente.
-        /// </summary>
-        /// <param name="exigeFfmpeg">
-        /// Quando true (download de MP3, que sempre precisa extrair/converter
-        /// áudio), bloqueia o download se o ffmpeg.exe não for encontrado.
-        /// Quando false (download de MP4), apenas avisa e pergunta se o
-        /// usuário quer continuar mesmo assim — pois muitos vídeos já vêm em
-        /// um único stream MP4 pronto, sem precisar de mesclagem.
-        /// </param>
-        private bool ValidarEntradas(bool exigeFfmpeg)
+        // ---------------------------------------------------------------
+        // Página Histórico
+        // ---------------------------------------------------------------
+
+        private void CarregarHistorico()
         {
-            if (string.IsNullOrWhiteSpace(txtUrl.Text))
+            listViewHistorico.Items.Clear();
+            var itens = GerenciadorHistorico.Carregar();
+
+            foreach (var item in itens)
             {
-                MessageBox.Show(this, "Por favor, cole a URL do vídeo do YouTube antes de continuar.",
-                    "URL não informada", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                txtUrl.Focus();
-                return false;
+                if (string.IsNullOrEmpty(item.Tipo))
+                    continue; // ignora entradas de "atualização do yt-dlp" (sem tipo)
+
+                var linha = new ListViewItem(item.Tipo);
+                linha.SubItems.Add(item.Titulo);
+                linha.SubItems.Add(item.DataHora.ToString("dd/MM/yyyy HH:mm"));
+                linha.Tag = item;
+                listViewHistorico.Items.Add(linha);
             }
 
-            if (!Uri.TryCreate(txtUrl.Text.Trim(), UriKind.Absolute, out _))
-            {
-                MessageBox.Show(this, "A URL informada não parece ser válida. Verifique e tente novamente.",
-                    "URL inválida", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                txtUrl.Focus();
-                return false;
-            }
+            lblHistoricoVazio.Visible = listViewHistorico.Items.Count == 0;
+        }
 
-            if (string.IsNullOrWhiteSpace(txtSavePath.Text) || !Directory.Exists(txtSavePath.Text))
+        private void menuItemAbrirPasta_Click(object sender, EventArgs e)
+        {
+            if (listViewHistorico.SelectedItems.Count == 0)
+                return;
+
+            if (listViewHistorico.SelectedItems[0].Tag is HistoricoItem item)
             {
-                MessageBox.Show(this, "Selecione uma pasta de destino válida antes de continuar.",
-                    "Pasta inválida", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                return false;
+                if (!Directory.Exists(item.Pasta))
+                {
+                    MessageBox.Show(this, "A pasta deste item não existe mais.",
+                        "Pasta não encontrada", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    return;
+                }
+
+                Process.Start(new ProcessStartInfo { FileName = item.Pasta, UseShellExecute = true });
             }
+        }
+
+        private void btnLimparHistorico_Click(object sender, EventArgs e)
+        {
+            if (listViewHistorico.Items.Count == 0)
+                return;
+
+            var resultado = MessageBox.Show(this,
+                "Apagar todo o histórico de downloads? Esta ação não pode ser desfeita.",
+                "Confirmar", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
+
+            if (resultado == DialogResult.Yes)
+            {
+                GerenciadorHistorico.Limpar();
+                CarregarHistorico();
+            }
+        }
+
+        // ---------------------------------------------------------------
+        // Verificações silenciosas de inicialização
+        // ---------------------------------------------------------------
+
+        private void VerificarDependenciasSilenciosamente()
+        {
+            RegistrarLog($"App iniciado. yt-dlp existe: {File.Exists(_ytDlpPath)} | ffmpeg existe: {File.Exists(_ffmpegPath)}");
 
             if (!File.Exists(_ytDlpPath))
             {
-                MessageBox.Show(this,
-                    $"Não foi possível encontrar o yt-dlp.exe em:\n{_ytDlpPath}\n\n" +
-                    "Baixe o yt-dlp.exe (github.com/yt-dlp/yt-dlp/releases) e coloque-o " +
-                    "na mesma pasta deste programa.",
-                    "yt-dlp.exe não encontrado", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                return false;
-            }
-
-            if (!File.Exists(_ffmpegPath))
-            {
-                if (exigeFfmpeg)
-                {
-                    MessageBox.Show(this,
-                        $"O ffmpeg.exe é obrigatório para extrair áudio em MP3 e não foi encontrado em:\n{_ffmpegPath}\n\n" +
-                        "Baixe o ffmpeg (gyan.dev/ffmpeg/builds) e coloque o ffmpeg.exe " +
-                        "na mesma pasta deste programa.",
-                        "ffmpeg.exe não encontrado", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                    return false;
-                }
-
-                var resultado = MessageBox.Show(this,
-                    "O ffmpeg.exe não foi encontrado. Sem ele, vídeos que exigem mesclagem de " +
-                    "faixas separadas podem ser salvos em qualidade reduzida ou com uma extensão " +
-                    "diferente de .mp4 (ex.: .av01). Deseja continuar mesmo assim?",
-                    "ffmpeg.exe não encontrado", MessageBoxButtons.YesNo, MessageBoxIcon.Warning);
-
-                if (resultado != DialogResult.Yes)
-                    return false;
-            }
-
-            if (radCookiesArquivo.Checked &&
-                (string.IsNullOrWhiteSpace(txtCookiesArquivo.Text) || !File.Exists(txtCookiesArquivo.Text)))
-            {
-                MessageBox.Show(this,
-                    "Selecione um arquivo cookies.txt válido, ou escolha outra opção de autenticação.",
-                    "Arquivo de cookies inválido", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                return false;
-            }
-
-            return true;
-        }
-
-        /// <summary>
-        /// Executa o yt-dlp.exe de forma assíncrona e totalmente oculta (sem abrir
-        /// nenhuma janela de console), capturando a saída padrão e de erro em tempo
-        /// real para atualizar o log de status na interface.
-        /// </summary>
-        /// <param name="argumentos">Lista de argumentos a passar para o yt-dlp (sem escaping manual).</param>
-        /// <param name="descricaoAcao">Texto descritivo da ação, exibido no início do log.</param>
-        /// <param name="tipoHistorico">
-        /// Quando informado ("MP4" ou "MP3"), registra um item no histórico de
-        /// downloads caso a execução termine com sucesso. Deixe nulo para ações
-        /// que não devem gerar registro (ex.: atualização do yt-dlp).
-        /// </param>
-        private async System.Threading.Tasks.Task ExecutarYtDlpAsync(
-            System.Collections.Generic.List<string> argumentos, string descricaoAcao, string? tipoHistorico = null)
-        {
-            _canceladoPeloUsuario = false;
-            _ultimoArquivoBaixado = null;
-            DefinirEstadoDownloadEmAndamento(true);
-            LimparStatus();
-            AdicionarStatus($"▶ Iniciando: {descricaoAcao}");
-            AdicionarStatus($"URL: {txtUrl.Text.Trim()}");
-            AdicionarStatus($"Destino: {txtSavePath.Text}");
-            AdicionarStatus("Processando URL...");
-
-            var psi = new ProcessStartInfo
-            {
-                FileName = _ytDlpPath,
-                UseShellExecute = false,        // obrigatório para redirecionar a saída
-                CreateNoWindow = true,           // garante que NENHUMA janela de console apareça
-                RedirectStandardOutput = true,
-                RedirectStandardError = true,
-                StandardOutputEncoding = Encoding.UTF8,
-                StandardErrorEncoding = Encoding.UTF8,
-                WorkingDirectory = AppDomain.CurrentDomain.BaseDirectory
-            };
-
-            // Usar ArgumentList evita problemas de escaping manual com espaços/aspas
-            // (por exemplo, em URLs com parâmetros ou em pastas com espaço no nome).
-            foreach (var arg in argumentos)
-            {
-                psi.ArgumentList.Add(arg);
-            }
-
-            using var processo = new Process { StartInfo = psi, EnableRaisingEvents = true };
-
-            // Os eventos abaixo são disparados em uma thread de segundo plano,
-            // por isso repassamos a linha para o método que já trata a
-            // atualização segura da interface (via Invoke).
-            processo.OutputDataReceived += (s, e) => ProcessarLinhaDeSaida(e.Data);
-            processo.ErrorDataReceived += (s, e) => ProcessarLinhaDeSaida(e.Data);
-
-            try
-            {
-                _processoAtual = processo;
-
-                processo.Start();
-                processo.BeginOutputReadLine();
-                processo.BeginErrorReadLine();
-
-                // Aguarda o término do processo sem travar a interface (thread da UI livre).
-                await processo.WaitForExitAsync();
-
-                if (_canceladoPeloUsuario)
-                {
-                    AdicionarStatus("⏹ Download cancelado pelo usuário.");
-                }
-                else if (processo.ExitCode == 0)
-                {
-                    AdicionarStatus("✅ Download concluído com sucesso!");
-                    AtualizarProgresso(100);
-
-                    if (!string.IsNullOrEmpty(tipoHistorico))
-                    {
-                        GerenciadorHistorico.Adicionar(new HistoricoItem
-                        {
-                            DataHora = DateTime.Now,
-                            Tipo = tipoHistorico,
-                            Titulo = string.IsNullOrEmpty(_ultimoArquivoBaixado)
-                                ? "(nome não identificado)"
-                                : Path.GetFileName(_ultimoArquivoBaixado),
-                            Pasta = txtSavePath.Text,
-                            Url = txtUrl.Text.Trim()
-                        });
-                    }
-                }
-                else
-                {
-                    AdicionarStatus($"⚠️ O yt-dlp terminou com código de saída {processo.ExitCode}. " +
-                                     "Verifique as mensagens acima para mais detalhes.");
-                }
-            }
-            catch (System.ComponentModel.Win32Exception exWin32)
-            {
-                // Ocorre tipicamente quando o executável não pode ser iniciado
-                // (permissão negada, arquivo corrompido, antivírus bloqueando, etc.).
-                AdicionarStatus($"❌ Erro ao iniciar o yt-dlp.exe: {exWin32.Message}");
-            }
-            catch (Exception ex)
-            {
-                AdicionarStatus($"❌ Erro inesperado: {ex.Message}");
-            }
-            finally
-            {
-                _processoAtual = null;
-                DefinirEstadoDownloadEmAndamento(false);
+                AtualizarStatus("yt-dlp.exe não encontrado.");
             }
         }
 
-        /// <summary>
-        /// Trata cada linha de saída (stdout/stderr) recebida do yt-dlp,
-        /// repassando-a de forma thread-safe para a interface gráfica.
-        /// </summary>
-        private void ProcessarLinhaDeSaida(string? linha)
-        {
-            if (string.IsNullOrWhiteSpace(linha))
-                return;
-
-            // Os eventos de saída do Process rodam em uma thread separada da UI;
-            // por isso é necessário usar Invoke/BeginInvoke para tocar em controles.
-            if (rtbStatus.IsHandleCreated && rtbStatus.InvokeRequired)
-            {
-                rtbStatus.BeginInvoke(new Action(() => TratarLinhaNaUi(linha)));
-            }
-            else
-            {
-                TratarLinhaNaUi(linha);
-            }
-        }
-
-        /// <summary>
-        /// Já rodando na thread da UI: adiciona a linha ao log e, se for uma
-        /// linha de progresso do yt-dlp, atualiza a barra de progresso.
-        /// </summary>
-        private void TratarLinhaNaUi(string linha)
-        {
-            AdicionarStatus(linha);
-
-            var match = RegexProgresso.Match(linha);
-            if (match.Success && double.TryParse(
-                    match.Groups[1].Value,
-                    System.Globalization.NumberStyles.Any,
-                    System.Globalization.CultureInfo.InvariantCulture,
-                    out double percentual))
-            {
-                AtualizarProgresso(percentual);
-            }
-
-            var matchDestino = RegexDestino.Match(linha);
-            if (matchDestino.Success)
-            {
-                _ultimoArquivoBaixado = matchDestino.Groups[1].Value.Trim();
-            }
-
-            // Alguns estágios comuns do yt-dlp, traduzidos para facilitar o entendimento do aluno.
-            if (linha.Contains("Extracting URL"))
-                AtualizarRotuloEstagio("Processando URL...");
-            else if (linha.Contains("[download] Destination"))
-                AtualizarRotuloEstagio("Baixando arquivo...");
-            else if (linha.Contains("[ExtractAudio]") || linha.Contains("Extracting audio"))
-                AtualizarRotuloEstagio("Convertendo para MP3...");
-            else if (linha.Contains("[Merger]") || linha.Contains("Merging formats"))
-                AtualizarRotuloEstagio("Mesclando vídeo e áudio...");
-            else if (linha.Contains("has already been downloaded"))
-                AtualizarRotuloEstagio("Arquivo já existente, pulando download...");
-
-            if (linha.Contains("Sign in to confirm you") && linha.Contains("not a bot"))
-            {
-                AdicionarStatus("💡 DICA: o YouTube está pedindo confirmação de que você não é um robô. " +
-                                 "Marque uma das opções em \"Autenticação\" (cookies do navegador ou " +
-                                 "arquivo cookies.txt) e tente novamente.");
-            }
-        }
-
-        /// <summary>
-        /// Atualiza o texto de status geral (não é o título do rótulo de estágio,
-        /// mas sim o log completo exibido no RichTextBox).
-        /// </summary>
-        private void AtualizarRotuloEstagio(string texto)
-        {
-            // Reaproveita o título acima do log para indicar o estágio atual.
-            lblStatusTitle.Text = $"Estágio do download: {texto}";
-        }
-
-        /// <summary>
-        /// Adiciona uma linha de texto ao final do log de status e rola
-        /// automaticamente até o final.
-        /// </summary>
-        private void AdicionarStatus(string mensagem)
-        {
-            rtbStatus.AppendText(mensagem + Environment.NewLine);
-            rtbStatus.SelectionStart = rtbStatus.TextLength;
-            rtbStatus.ScrollToCaret();
-        }
-
-        /// <summary>
-        /// Limpa o log de status e reseta a barra de progresso.
-        /// </summary>
-        private void LimparStatus()
-        {
-            rtbStatus.Clear();
-            AtualizarProgresso(0);
-            lblStatusTitle.Text = "Estágio do download:";
-        }
-
-        /// <summary>
-        /// Atualiza a barra de progresso e o rótulo de porcentagem.
-        /// </summary>
-        private void AtualizarProgresso(double percentual)
-        {
-            int valor = Math.Clamp((int)Math.Round(percentual), 0, 100);
-            progressBar1.Value = valor;
-            lblProgressPercent.Text = $"{valor}%";
-        }
-
-        /// <summary>
-        /// Habilita/desabilita os controles de interação enquanto um download
-        /// está em andamento, evitando que o usuário dispare execuções simultâneas.
-        /// </summary>
-        private void DefinirEstadoDownloadEmAndamento(bool emAndamento)
-        {
-            btnDownloadMp4.Enabled = !emAndamento;
-            btnDownloadMp3.Enabled = !emAndamento;
-            btnSelectFolder.Enabled = !emAndamento;
-            txtUrl.Enabled = !emAndamento;
-            chkPlaylist.Enabled = !emAndamento;
-            btnAtualizarYtDlp.Enabled = !emAndamento;
-            btnHistorico.Enabled = !emAndamento;
-            grpAutenticacao.Enabled = !emAndamento;
-
-            // O botão Cancelar só faz sentido enquanto há um download em andamento.
-            btnCancelar.Enabled = emAndamento;
-
-            Cursor = emAndamento ? Cursors.AppStarting : Cursors.Default;
-        }
-
-        /// <summary>
-        /// Garante que, se a janela for fechada durante um download, o processo
-        /// filho do yt-dlp também seja encerrado (evita processos "fantasma").
-        /// </summary>
         protected override void OnFormClosing(FormClosingEventArgs e)
         {
             try
@@ -686,10 +732,12 @@ namespace YtDlpGui
                 {
                     _processoAtual.Kill(entireProcessTree: true);
                 }
+
+                notifyIcon1.Visible = false;
             }
             catch
             {
-                // Ignora falhas ao tentar encerrar o processo durante o fechamento do app.
+                // Ignora falhas ao encerrar durante o fechamento do app.
             }
 
             base.OnFormClosing(e);

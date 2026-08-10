@@ -68,8 +68,15 @@ if (-not (Test-Path (Join-Path $pastaPublish "YtDlpGui.exe"))) {
 
 New-Item -ItemType Directory -Path $pastaDist -Force | Out-Null
 
-Escrever-Etapa "Copiando o executável publicado..."
-Copy-Item (Join-Path $pastaPublish "YtDlpGui.exe") $pastaDist -Force
+Escrever-Etapa "Copiando os arquivos publicados (exe, icon.ico, Assets)..."
+Get-ChildItem -Path $pastaPublish -Exclude "*.pdb" | Copy-Item -Destination $pastaDist -Recurse -Force
+
+if (-not (Test-Path (Join-Path $pastaDist "YtDlpGui.exe"))) {
+    throw "Falha ao copiar o YtDlpGui.exe para a pasta de distribuição."
+}
+if (-not (Test-Path (Join-Path $pastaDist "Assets"))) {
+    Write-Host "Aviso: a pasta Assets não foi encontrada na publicação - os ícones das telas podem não aparecer." -ForegroundColor Yellow
+}
 
 # --- 3. Download do yt-dlp.exe ---------------------------------------------
 Escrever-Etapa "Baixando o yt-dlp.exe mais recente..."

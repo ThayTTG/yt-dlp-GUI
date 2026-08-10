@@ -3,18 +3,21 @@
 Aplicação desktop em **C# / .NET 8 (WinForms)** que permite baixar vídeos e
 áudios do YouTube sem que o aluno precise usar o CMD ou o PowerShell.
 
+Visual baseado em um mockup próprio: barra lateral de navegação, telas
+separadas por função, paleta sálvia + menta + azul, sem exibir a saída
+bruta do yt-dlp em nenhum momento.
+
 ## Estrutura dos arquivos
 
 ```
 YtDlpGui/
-├── YtDlpGui.csproj            # arquivo de projeto (.NET 8, WinForms)
-├── Program.cs                  # ponto de entrada da aplicação
-├── MainForm.cs                  # tela principal: chamada ao yt-dlp, eventos, validações
-├── MainForm.Designer.cs         # layout visual da tela principal
-├── HistoricoForm.cs             # janela de histórico de downloads
-├── HistoricoForm.Designer.cs    # layout visual da janela de histórico
+├── YtDlpGui.csproj              # projeto (.NET 8, WinForms, pacote Guna.UI2.WinForms)
+├── Program.cs                   # ponto de entrada da aplicação
+├── MainForm.cs                  # toda a lógica: navegação, download, notificações
+├── MainForm.Designer.cs         # layout visual (barra lateral + 4 páginas + status bar)
 ├── GerenciadorHistorico.cs      # persistência do histórico em JSON (%AppData%)
 ├── icon.ico                     # ícone do app (janela, taskbar, .exe)
+├── Assets/                      # ícones e ilustrações (logo, navegação, botões)
 ├── publicar.ps1                 # script que gera o pacote pronto para distribuir
 ├── LEIA-ME.txt                  # instruções para o usuário final (vai dentro do pacote)
 └── README.md                    # este arquivo (documentação técnica)
@@ -22,12 +25,9 @@ YtDlpGui/
 
 ## 1. Onde colocar o `yt-dlp.exe` e o `ffmpeg.exe`
 
-**O aplicativo espera encontrar os dois executáveis na MESMA PASTA do
-`.exe` da aplicação** (a pasta de saída da compilação, por exemplo:
-`bin\Debug\net8.0-windows\` durante o desenvolvimento, ou a pasta onde
-você distribuir o programa publicado).
-
-O caminho é resolvido em `MainForm.cs` através de:
+O aplicativo espera encontrar os dois executáveis na **mesma pasta** do
+`.exe` da aplicação (a pasta de saída da compilação, ex.:
+`bin\Debug\net8.0-windows\`, ou a pasta onde o programa for distribuído):
 
 ```csharp
 string pastaApp = AppDomain.CurrentDomain.BaseDirectory;
@@ -35,270 +35,164 @@ _ytDlpPath = Path.Combine(pastaApp, "yt-dlp.exe");
 _ffmpegPath = Path.Combine(pastaApp, "ffmpeg.exe");
 ```
 
-### Onde baixar cada executável
+- **yt-dlp.exe**: `https://github.com/yt-dlp/yt-dlp/releases` (arquivo `yt-dlp.exe`)
+- **ffmpeg.exe**: `https://www.gyan.dev/ffmpeg/builds/` (build "essentials", pasta `bin`)
 
-- **yt-dlp.exe**: baixe a versão Windows mais recente em
-  `https://github.com/yt-dlp/yt-dlp/releases` (arquivo `yt-dlp.exe`).
-- **ffmpeg.exe**: baixe um build Windows (essentials/full) em
-  `https://www.gyan.dev/ffmpeg/builds/` ou `https://ffmpeg.org/download.html`,
-  e copie apenas o `ffmpeg.exe` (dentro da pasta `bin` do pacote baixado)
-  para a mesma pasta da aplicação.
+## 2. Arquitetura da interface (barra lateral + páginas)
 
-> O `ffmpeg.exe` é **obrigatório** para a extração/conversão de MP3 (`-x
-> --audio-format mp3`) e é altamente recomendado também para o MP4, pois é
-> ele quem mescla as faixas de vídeo e áudio baixadas separadamente pelo
-> yt-dlp em um único arquivo.
+Diferente da versão anterior (tudo em uma única tela com log rolável), o
+app agora é dividido em uma **casca de navegação** (`MainForm`) com quatro
+"páginas" — painéis que ocupam a mesma área e alternam visibilidade:
 
-### Automatizando a cópia na compilação (opcional)
+| Painel                 | Conteúdo                                                                 |
+|----------------------- |--------------------------------------------------------------------------|
+| `pnlHome`              | Campo de URL + botões "Baixar .MP4" / "Baixar .MP3" + toggle de playlist |
+| `pnlHistorico`         | Lista (Tipo/Nome/Data) dos downloads já concluídos                       |
+| `pnlPasta`             | Local de salvamento + botão "Alterar Local"                              |
+| `pnlConfiguracoes`     | Autenticação por cookies + botão "Atualizar yt-dlp"                      |
 
-Se preferir, crie uma pasta `tools/` ao lado do `.csproj`, coloque os dois
-executáveis lá dentro, e descomente o bloco `<ItemGroup>` já preparado no
-`YtDlpGui.csproj`. Assim, toda vez que você compilar o projeto, os arquivos
-serão copiados automaticamente para a pasta de saída.
+A troca de página é feita por `MostrarPagina(string pagina)` em
+`MainForm.cs`, chamada pelos cliques nos ícones da barra lateral
+(`picLogo`, `picNavHistorico`, `picNavPasta`, `picNavConfig`). Os ícones
+trocam de cor (branco → azul) conforme a página ativa, via
+`AtualizarIconesDeNavegacao`.
 
-## 2. Como compilar e executar
+Uma **barra de status fixa** (`pnlStatusBar`) fica sempre visível na parte
+inferior, independente da página aberta, mostrando o estágio atual do
+download e a barra de progresso — e o botão vermelho circular "Cancelar"
+fica sempre acessível no canto inferior direito da área de conteúdo.
 
-Com o [.NET 8 SDK](https://dotnet.microsoft.com/download) instalado:
+## 3. Sem terminal / log bruto
 
-```bash
-cd YtDlpGui
-dotnet build
-dotnet run
-```
+A versão anterior tinha uma `RichTextBox` mostrando linha por linha a
+saída do yt-dlp — útil para desenvolvedores, mas confusa para um usuário
+comum. Isso foi removido da interface. Em vez disso:
 
-Ou abra a pasta no Visual Studio 2022 (17.8+) e pressione **F5**.
+- `TratarLinha()` interpreta cada linha da saída do yt-dlp e converte em
+  uma frase curta e amigável, exibida em `lblStatus` (ex.: "Baixando...
+  45%", "Convertendo para MP3...", "Finalizando arquivo...").
+- Toda a saída bruta (stdout + stderr) continua sendo gravada, mas
+  **silenciosamente**, em um arquivo de log para fins de suporte/depuração:
+  `%AppData%\YtDlpGui\log.txt` (função `RegistrarLog`). Isso preserva a
+  possibilidade de diagnosticar problemas sem expor o usuário a jargão
+  técnico.
+- Em caso de falha, `TraduzirErro()` mapeia as mensagens de erro mais
+  comuns do yt-dlp (bloqueio anti-bot, ffmpeg ausente, vídeo indisponível,
+  vídeo privado) para frases em português, exibidas em um `MessageBox`
+  simples — sem o texto original do yt-dlp na tela.
 
-## 3. Como o programa evita abrir a janela do CMD
+## 4. Notificações do Windows
 
-O `MainForm.cs` configura o `ProcessStartInfo` da seguinte forma:
+Ao final de um download (sucesso ou falha), o app dispara uma notificação
+usando `NotifyIcon.ShowBalloonTip` (método `MostrarNotificacao` em
+`MainForm.cs`):
 
-```csharp
-var psi = new ProcessStartInfo
-{
-    FileName = _ytDlpPath,
-    UseShellExecute = false,       // necessário para redirecionar a saída
-    CreateNoWindow = true,         // impede que qualquer console apareça
-    RedirectStandardOutput = true, // captura o progresso
-    RedirectStandardError = true,  // captura mensagens de erro/aviso
-};
-```
+- **Sucesso**: título "Download concluído", mensagem com o nome do
+  arquivo salvo.
+- **Falha**: título "Falha no download", mensagem com o erro traduzido
+  (mesma lógica de `TraduzirErro`).
+- **Atualização do yt-dlp**: notificação própria ("yt-dlp atualizado"),
+  sem gerar entrada no histórico.
 
-A saída do processo é lida de forma assíncrona via
-`OutputDataReceived` / `ErrorDataReceived` e repassada para o
-`RichTextBox` de status usando `Invoke`/`BeginInvoke`, já que esses
-eventos disparam em uma thread diferente da interface gráfica.
+Isso permite que o aluno minimize a janela ou troque de tela enquanto o
+download roda em segundo plano, e ainda saiba quando terminou.
 
-## 4. Validações e tratamento de erros incluídos
+> Notificações balão (`ShowBalloonTip`) são a API nativa mais simples do
+> WinForms para esse fim. Elas usam o ícone da bandeja do sistema
+> (`notifyIcon1`, criado oculto/visível conforme necessário). Se quiser
+> "toasts" no estilo Windows 11 mais recente, seria necessário migrar para
+> a API `Microsoft.Toolkit.Uwp.Notifications` — não incluída aqui para
+> manter o projeto sem dependências extras além do Guna.UI2.
 
-- URL vazia ou em formato inválido → aviso ao usuário, sem chamar o processo.
-- Pasta de destino inexistente/inválida → aviso ao usuário.
-- `yt-dlp.exe` ausente → mensagem de erro explicando onde colocá-lo.
-- `ffmpeg.exe` ausente → aviso no log (o download pode falhar dependendo do
-  formato escolhido pelo YouTube para aquele vídeo).
-- Falha ao iniciar o processo (ex.: antivírus bloqueando) → mensagem de erro
-  capturada e exibida no log, sem travar a aplicação.
-- Código de saída (`ExitCode`) diferente de 0 → aviso de que algo pode ter
-  dado errado, mantendo o log visível para o aluno investigar.
-- Fechamento da janela durante um download em andamento → o processo filho
-  do yt-dlp é encerrado junto (evita processos "fantasma" em segundo plano).
+## 5. Histórico de downloads
 
-## 5. Cancelar download e suporte a playlist
+Persistido em JSON por `GerenciadorHistorico`
+(`%AppData%\YtDlpGui\historico.json`), sem depender de banco de dados.
+Cada item guarda tipo (MP4/MP3), nome do arquivo (capturado da saída do
+yt-dlp via `RegexDestino`), pasta e data/hora. A tela de Histórico permite
+abrir a pasta de um item (duplo clique ou menu de contexto) e limpar tudo.
 
-- **Botão "Cancelar"**: fica desabilitado enquanto não há download em
-  andamento. Ao clicar, chama `_processoAtual.Kill(entireProcessTree: true)`,
-  encerrando o `yt-dlp.exe` e qualquer `ffmpeg.exe` filho que ele tenha
-  iniciado. O log exibe "Download cancelado pelo usuário." em vez de uma
-  mensagem de erro.
-- **Checkbox "Baixar playlist inteira"**: desmarcado por padrão (mais seguro
-  para uso educacional — evita que o aluno baixe uma playlist inteira sem
-  querer ao colar um link que contém `&list=`). Quando desmarcado, o
-  programa passa `--no-playlist` ao yt-dlp; quando marcado, passa
-  `--yes-playlist`, baixando todos os vídeos da playlist referenciada pelo
-  link.
-- O checkbox e o botão "Selecionar Pasta"/campo de URL ficam desabilitados
-  durante um download em andamento, e o botão "Cancelar" é o único
-  controle de ação habilitado nesse momento.
+Ações sem tipo associado (como "Atualizar yt-dlp") não entram na lista
+exibida — o filtro está em `CarregarHistorico()`.
 
-## 6. Histórico de downloads
+## 6. Autenticação por cookies
 
-- Botão **"Histórico"** (canto superior direito) abre a janela
-  `HistoricoForm`, com uma lista (data/hora, tipo, arquivo, pasta) de tudo
-  que já foi baixado com sucesso.
-- Os dados são persistidos em JSON pela classe `GerenciadorHistorico`, no
-  arquivo `%AppData%\YtDlpGui\historico.json` — não depende de banco de
-  dados, e sobrevive a atualizações do programa.
-- O nome do arquivo final é obtido lendo a saída do yt-dlp em busca de
-  linhas `Destination: ...` (via `RegexDestino` em `MainForm.cs`).
-- Na janela de histórico é possível abrir a pasta de um item específico no
-  Explorer, ou limpar todo o histórico (com confirmação).
-- São mantidos no máximo 200 registros; os mais antigos são descartados
-  automaticamente.
+Página "Configurações" com três opções (mutuamente exclusivas via
+`Guna2RadioButton`):
 
-## 7. Atualização do yt-dlp
+- **Não usar cookies** (padrão)
+- **Cookies do navegador**: `--cookies-from-browser <navegador>`
+- **Arquivo cookies.txt**: `--cookies <caminho>`, selecionado via
+  `OpenFileDialog`
 
-- Botão **"Atualizar yt-dlp"** roda `yt-dlp.exe -U`, que baixa e aplica a
-  versão mais recente do próprio yt-dlp. Como o YouTube muda o
-  funcionamento do site com frequência, isso evita que os downloads
-  passem a falhar com o tempo.
-- Reaproveita o mesmo pipeline assíncrono (`ExecutarYtDlpAsync`) usado
-  pelos downloads, então a saída aparece no mesmo log e os botões ficam
-  bloqueados durante a atualização.
+Resolve o erro "Sign in to confirm you're not a bot" do YouTube.
 
-## 8. Distribuição para usuários comuns (`publicar.ps1`)
+## 7. Cancelar download e suporte a playlist
 
-Para que qualquer pessoa consiga usar o programa **sem instalar o .NET,
-sem instalar o yt-dlp/ffmpeg manualmente e sem mexer em linha de comando**,
-o projeto inclui um script de empacotamento: `publicar.ps1`.
+- Botão circular vermelho "X" (`btnCancelar`) mata o processo do yt-dlp
+  (e o ffmpeg filho) via `Process.Kill(entireProcessTree: true)`.
+- Toggle "Baixar Playlist" na Home controla `--yes-playlist` /
+  `--no-playlist` (desmarcado por padrão, mais seguro para uso educacional).
 
-### O que o script faz
+## 8. Visual (Guna.UI2 + paleta do mockup)
 
-1. Compila a aplicação em modo **self-contained + single file**
-   (`dotnet publish -r win-x64 --self-contained true -p:PublishSingleFile=true`),
-   gerando um único `YtDlpGui.exe` que já contém o runtime do .NET
-   embutido — o usuário final não precisa instalar nada para rodá-lo.
-2. Baixa automaticamente o `yt-dlp.exe` mais recente
-   (`github.com/yt-dlp/yt-dlp/releases/latest`).
-3. Baixa automaticamente um build do `ffmpeg` (gyan.dev) e extrai apenas
-   o `ffmpeg.exe`.
-4. Copia o `LEIA-ME.txt` (instruções em português simples, sem jargão
-   técnico) para dentro do pacote.
-5. Junta tudo em uma pasta `Distribuicao/` e gera
-   `YtDlpGui-Portatil.zip`.
+| Uso                            | Cor        |
+|----------------------------------|------------|
+| Fundo da área de conteúdo          | `#5C7F72`  |
+| Fundo da barra de status           | `#4E6E62`  |
+| Barra lateral / botões "pill"      | `#8FCEBB`  |
+| Campos de texto / cards            | `#FFFFFF`  |
+| Texto sobre fundo escuro           | `#FFFFFF`  |
+| Texto sobre fundo claro            | `#1F2937`  |
+| Acento (ativo/foco/progresso)      | `#2F7DE8`  |
+| Perigo (Cancelar/Limpar)           | `#E15C4F`  |
 
-### Como gerar o pacote
-
-Em um Windows com o **.NET 8 SDK** instalado e conexão com a internet:
-
-```powershell
-cd YtDlpGui
-.\publicar.ps1
-```
-
-Ao final, envie o arquivo **`YtDlpGui-Portatil.zip`** por e-mail, Google
-Drive, pendrive, etc. O usuário final só precisa:
-
-1. Extrair o `.zip`;
-2. Dar dois cliques em `YtDlpGui.exe`;
-3. (Na primeira execução, o Windows SmartScreen pode pedir para clicar em
-   "Mais informações" → "Executar assim mesmo", pois o executável não tem
-   certificado de assinatura pago — isso é esperado e está explicado no
-   `LEIA-ME.txt`.)
-
-Não é necessário rodar `dotnet build`, instalar SDK, nem baixar yt-dlp ou
-ffmpeg manualmente do lado do usuário final — o pacote já vem completo.
-
-## 9. Correção: arquivo salvo com extensão estranha (ex.: `.av01`)
-
-Esse comportamento acontecia quando o `ffmpeg.exe` não era encontrado (ou o
-seletor de formato trazia faixas em codecs que exigiam remuxagem): o yt-dlp
-não conseguia mesclar vídeo e áudio e salvava as faixas separadas, com a
-extensão baseada no nome do codec.
-
-Correções aplicadas em `btnDownloadMp4_Click`:
-
-- O seletor de formato agora prioriza streams **já nativamente compatíveis
-  com MP4/M4A**:
-  `-f "bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/bestvideo+bestaudio/best"`.
-  Isso reduz a dependência do ffmpeg (muitos vídeos já têm uma opção
-  "tudo-em-um" em MP4) e evita cair em AV1/VP9 + Opus quando não é
-  necessário.
-- `ValidarEntradas(bool exigeFfmpeg)` agora trata o ffmpeg ausente de forma
-  diferente por tipo de download:
-  - **MP3** (`exigeFfmpeg: true`): bloqueia o download com uma mensagem de
-    erro clara, pois a extração de áudio depende 100% do ffmpeg.
-  - **MP4** (`exigeFfmpeg: false`): avisa o usuário e pergunta se ele quer
-    continuar mesmo assim (Sim/Não), já que muitos vídeos funcionam sem
-    mesclagem.
-
-## 10. Correção: erro "Sign in to confirm you're not a bot"
-
-O YouTube passou a exigir, para alguns IPs/contas, uma confirmação de que a
-requisição não vem de um robô. A solução recomendada pelo próprio projeto
-yt-dlp é enviar cookies de uma sessão autenticada. Foi adicionado um novo
-grupo **"Autenticação"** na tela principal, com três opções:
-
-- **Não usar cookies (padrão)** — comportamento anterior, sem alterações.
-- **Cookies do navegador** — adiciona `--cookies-from-browser <navegador>`,
-  lendo os cookies diretamente de um navegador local (Chrome, Edge, Firefox,
-  Brave, Opera, Vivaldi ou Chromium) em que o aluno já esteja logado no
-  YouTube. Não exige nenhuma exportação manual.
-- **Arquivo cookies.txt** — adiciona `--cookies <caminho>`, usando um
-  arquivo exportado manualmente (ex.: extensão "Get cookies.txt" no
-  navegador). Um `OpenFileDialog` permite selecionar o arquivo.
-
-Ambas as opções são implementadas em `AdicionarArgumentosDeAutenticacao`,
-chamado tanto no download de MP4 quanto no de MP3. Além disso,
-`TratarLinhaNaUi` detecta a mensagem de erro específica do YouTube na saída
-do yt-dlp e exibe uma dica no log orientando o uso dessas opções.
-
-## 12. Visual moderno (Guna.UI2) e ícone customizado
-
-A interface foi modernizada usando a biblioteca **Guna.UI2.WinForms**
-(botões arredondados, campos de texto com foco destacado, grupo de
-autenticação em "card") e um ícone próprio para o app.
-
-### Paleta de cores usada
-
-| Uso                          | Cor        |
-|-------------------------------|------------|
-| Fundo da janela                | `#F7F8FA`  |
-| Cards/campos                   | `#FFFFFF`  |
-| Borda neutra                   | `#E1E4E8`  |
-| Texto principal                | `#1F2937`  |
-| Texto secundário               | `#6B7280`  |
-| Acento (MP4/MP3/foco)          | `#2F6FED`  |
-| Acento (hover)                 | `#255ED1`  |
-| Perigo (Cancelar/Limpar)       | `#EF4444`  |
-| Botão secundário                | `#F3F4F6`  |
-| Estado desabilitado (fundo)     | `#E5E7EB`  |
-| Estado desabilitado (texto)     | `#9CA3AF`  |
-
-Essas cores estão centralizadas como constantes no topo de
-`MainForm.Designer.cs` (`CorFundo`, `CorAcento`, `CorPerigo`, etc.) e em
-`HistoricoForm.Designer.cs` — para trocar a paleta inteira, basta editar
-os valores ali.
-
-O estado **desabilitado** dos botões agora usa `DisabledState.FillColor` /
-`DisabledState.ForeColor` do Guna2Button, corrigindo o problema do texto
-quase invisível (cinza-claro sobre cinza-claro) do WinForms padrão.
+Constantes centralizadas no topo de `MainForm.Designer.cs`. Fonte usada em
+toda a interface: **Consolas** (monoespaçada, combinando com a estética do
+mockup). Os ícones/ilustrações ficam em `Assets/` (PNG, gerados como
+silhuetas simples: logo com linhas de movimento, relógio/histórico, pasta,
+engrenagem, seta de download, nota musical).
 
 ### Ícone do aplicativo
 
-Foi gerado um ícone simples (seta de download sobre fundo azul
-arredondado), salvo como `icon.ico` na raiz do projeto:
-
-- Referenciado em `YtDlpGui.csproj` via `<ApplicationIcon>icon.ico</ApplicationIcon>`
-  (ícone do `.exe` no Explorer/taskbar).
-- Copiado para a pasta de saída (`CopyToOutputDirectory`) e carregado em
-  tempo de execução por `CarregarIconeDaJanela()` em `MainForm.cs` e
-  `HistoricoForm.cs` (ícone da janela/barra de tarefas).
-
-Para trocar por um ícone próprio, basta substituir o arquivo
-`icon.ico` (mantendo o mesmo nome) por um `.ico` multi-resolução
-(recomendado: 16, 32, 48 e 256 px).
+`icon.ico` (raiz do projeto) é referenciado via
+`<ApplicationIcon>` no `.csproj` (ícone do `.exe`) e carregado em tempo de
+execução por `CarregarIconeDaJanela()` (ícone da janela/taskbar/bandeja de
+notificações). Para trocar, substitua o arquivo mantendo o nome.
 
 ### Instalando o Guna.UI2.WinForms
-
-O pacote é referenciado via NuGet no `.csproj`. Para restaurar (necessário
-apenas uma vez, ou sempre que trocar de máquina):
 
 ```bash
 cd YtDlpGui
 dotnet restore
 ```
 
-Isso exige conexão com a internet na primeira vez. O `publicar.ps1` já
-roda o `dotnet publish`, que restaura automaticamente as dependências.
+Exige internet na primeira vez (baixa o pacote do NuGet, fixado na versão
+`2.0.4.6` no `.csproj`). O `publicar.ps1` já roda `dotnet publish`, que
+restaura automaticamente.
 
-> **Nota:** a API do Guna.UI2.WinForms pode variar ligeiramente entre
-> versões. O projeto está fixado na versão `2.0.4.6` no `.csproj`; se você
-> atualizar a versão do pacote, confira se os nomes de propriedades usados
-> em `MainForm.Designer.cs` (`FillColor`, `BorderRadius`, `HoverState`,
-> `DisabledState`, etc.) continuam válidos antes de compilar em produção.
+## 9. Distribuição para usuários comuns (`publicar.ps1`)
 
-## 13. Possíveis melhorias futuras (fora do escopo atual)
+Continua funcionando como antes: compila em modo self-contained + single
+file, baixa `yt-dlp.exe` e `ffmpeg.exe` automaticamente, copia o
+`LEIA-ME.txt` e empacota tudo em `YtDlpGui-Portatil.zip`. Rode em um
+Windows com .NET 8 SDK e internet:
 
-- Assinatura digital do executável, para eliminar o aviso do SmartScreen.
-- Verificação automática de atualização do próprio programa (não apenas
-  do yt-dlp).
+```powershell
+cd YtDlpGui
+.\publicar.ps1
+```
+
+> **Atenção**: o script atual não copia a pasta `Assets/` nem o
+> `icon.ico` manualmente — isso já é feito automaticamente pelo
+> `dotnet publish`, pois ambos estão marcados como `CopyToOutputDirectory`
+> no `.csproj`. Não é necessário alterar o `publicar.ps1` para isso.
+
+## 10. Possíveis melhorias futuras (fora do escopo atual)
+
+- Notificações estilo "toast" do Windows 11 (via
+  `Microsoft.Toolkit.Uwp.Notifications`), em vez de balão clássico.
 - Exportar o histórico para CSV/Excel.
+- Assinatura digital do executável, para eliminar o aviso do SmartScreen.
+- Indicador visual de "download em andamento" nos ícones da barra lateral
+  mesmo quando o usuário está em outra página.
