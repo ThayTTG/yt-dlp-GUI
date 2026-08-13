@@ -95,6 +95,7 @@ namespace YtDlpGui
         private System.Windows.Forms.Panel pnlConfiguracoes;
         private System.Windows.Forms.Label lblTituloConfig;
         private System.Windows.Forms.Label lblCookiesArquivoTitulo;
+        private Guna2Button btnAjudaCookies;
         private Guna2RadioButton radCookiesArquivo;
         private Guna2TextBox txtCookiesArquivo;
         private Guna2Button btnSelecionarCookies;
@@ -103,6 +104,9 @@ namespace YtDlpGui
         private Guna2ComboBox cmbNavegador;
         private Guna2RadioButton radSemCookies;
         private System.Windows.Forms.Label lblSemCookies;
+        private System.Windows.Forms.Label lblPlaylistConfigTitulo;
+        private Guna2CheckBox chkOrganizarPlaylist;
+        private System.Windows.Forms.Label lblPlaylistConfigDescricao;
         private Guna2Button btnAtualizarYtDlp;
 
         #endregion
@@ -129,8 +133,6 @@ namespace YtDlpGui
             botao.HoverState.FillColor = System.Drawing.Color.FromArgb(120, 190, 168);
             botao.DisabledState.FillColor = CorDesabilitadoFundo;
             botao.DisabledState.ForeColor = CorDesabilitadoTexto;
-            // botao.ImageAlign = System.Drawing.ContentAlignment.MiddleLeft;
-            // botao.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
             botao.ImageAlign = System.Windows.Forms.HorizontalAlignment.Center;
             botao.TextAlign = System.Windows.Forms.HorizontalAlignment.Center;
             botao.Animated = true;
@@ -194,6 +196,7 @@ namespace YtDlpGui
             this.pnlConfiguracoes = new System.Windows.Forms.Panel();
             this.lblTituloConfig = new System.Windows.Forms.Label();
             this.lblCookiesArquivoTitulo = new System.Windows.Forms.Label();
+            this.btnAjudaCookies = new Guna2Button();
             this.radCookiesArquivo = new Guna2RadioButton();
             this.txtCookiesArquivo = new Guna2TextBox();
             this.btnSelecionarCookies = new Guna2Button();
@@ -202,6 +205,9 @@ namespace YtDlpGui
             this.cmbNavegador = new Guna2ComboBox();
             this.radSemCookies = new Guna2RadioButton();
             this.lblSemCookies = new System.Windows.Forms.Label();
+            this.lblPlaylistConfigTitulo = new System.Windows.Forms.Label();
+            this.chkOrganizarPlaylist = new Guna2CheckBox();
+            this.lblPlaylistConfigDescricao = new System.Windows.Forms.Label();
             this.btnAtualizarYtDlp = new Guna2Button();
 
             ((System.ComponentModel.ISupportInitialize)(this.picLogo)).BeginInit();
@@ -583,6 +589,9 @@ namespace YtDlpGui
             this.pnlConfiguracoes.TabIndex = 3;
             this.pnlConfiguracoes.Visible = false;
             this.pnlConfiguracoes.Controls.Add(this.btnAtualizarYtDlp);
+            this.pnlConfiguracoes.Controls.Add(this.lblPlaylistConfigDescricao);
+            this.pnlConfiguracoes.Controls.Add(this.chkOrganizarPlaylist);
+            this.pnlConfiguracoes.Controls.Add(this.lblPlaylistConfigTitulo);
             this.pnlConfiguracoes.Controls.Add(this.lblSemCookies);
             this.pnlConfiguracoes.Controls.Add(this.radSemCookies);
             this.pnlConfiguracoes.Controls.Add(this.cmbNavegador);
@@ -591,6 +600,7 @@ namespace YtDlpGui
             this.pnlConfiguracoes.Controls.Add(this.btnSelecionarCookies);
             this.pnlConfiguracoes.Controls.Add(this.txtCookiesArquivo);
             this.pnlConfiguracoes.Controls.Add(this.radCookiesArquivo);
+            this.pnlConfiguracoes.Controls.Add(this.btnAjudaCookies);
             this.pnlConfiguracoes.Controls.Add(this.lblCookiesArquivoTitulo);
             this.pnlConfiguracoes.Controls.Add(this.lblTituloConfig);
             //
@@ -614,7 +624,22 @@ namespace YtDlpGui
             this.lblCookiesArquivoTitulo.Name = "lblCookiesArquivoTitulo";
             this.lblCookiesArquivoTitulo.Size = new System.Drawing.Size(260, 18);
             this.lblCookiesArquivoTitulo.TabIndex = 1;
-            this.lblCookiesArquivoTitulo.Text = "Usar arquivo cookies.txt";
+            this.lblCookiesArquivoTitulo.Text = "Usar arquivo cookies.txt exportado";
+            //
+            // btnAjudaCookies
+            //
+            this.btnAjudaCookies.BorderRadius = 13;
+            this.btnAjudaCookies.FillColor = System.Drawing.Color.FromArgb(255, 255, 255, 60);
+            this.btnAjudaCookies.ForeColor = CorTextoClaro;
+            this.btnAjudaCookies.Font = new System.Drawing.Font("Consolas", 9F, System.Drawing.FontStyle.Bold);
+            this.btnAjudaCookies.HoverState.FillColor = System.Drawing.Color.FromArgb(255, 255, 255, 100);
+            this.btnAjudaCookies.Location = new System.Drawing.Point(320, 88);
+            this.btnAjudaCookies.Name = "btnAjudaCookies";
+            this.btnAjudaCookies.Size = new System.Drawing.Size(26, 26);
+            this.btnAjudaCookies.TabIndex = 1;
+            this.btnAjudaCookies.Text = "?";
+            this.btnAjudaCookies.Animated = true;
+            this.btnAjudaCookies.Click += new System.EventHandler(this.btnAjudaCookies_Click);
             //
             // radCookiesArquivo
             //
@@ -634,6 +659,7 @@ namespace YtDlpGui
             this.txtCookiesArquivo.Location = new System.Drawing.Point(90, 120);
             this.txtCookiesArquivo.Name = "txtCookiesArquivo";
             this.txtCookiesArquivo.ReadOnly = true;
+            this.txtCookiesArquivo.PlaceholderText = "Nenhum arquivo selecionado — clique em \"Buscar\" ou toque em \"?\" para ajuda";
             this.txtCookiesArquivo.Size = new System.Drawing.Size(500, 40);
             this.txtCookiesArquivo.TabIndex = 3;
             this.EstilizarCampoTexto(this.txtCookiesArquivo, 18);
@@ -717,6 +743,42 @@ namespace YtDlpGui
             this.lblSemCookies.Size = new System.Drawing.Size(180, 18);
             this.lblSemCookies.TabIndex = 9;
             this.lblSemCookies.Text = "Não usar cookies";
+            //
+            // lblPlaylistConfigTitulo
+            //
+            this.lblPlaylistConfigTitulo.AutoSize = true;
+            this.lblPlaylistConfigTitulo.Font = new System.Drawing.Font("Consolas", 11F);
+            this.lblPlaylistConfigTitulo.ForeColor = CorTextoClaro;
+            this.lblPlaylistConfigTitulo.Location = new System.Drawing.Point(40, 360);
+            this.lblPlaylistConfigTitulo.Name = "lblPlaylistConfigTitulo";
+            this.lblPlaylistConfigTitulo.Size = new System.Drawing.Size(180, 18);
+            this.lblPlaylistConfigTitulo.TabIndex = 9;
+            this.lblPlaylistConfigTitulo.Text = "Downloads de playlist";
+            //
+            // chkOrganizarPlaylist
+            //
+            this.chkOrganizarPlaylist.AutoSize = true;
+            this.chkOrganizarPlaylist.CheckedState.BorderColor = CorAcento;
+            this.chkOrganizarPlaylist.CheckedState.FillColor = CorAcento;
+            this.chkOrganizarPlaylist.Font = new System.Drawing.Font("Consolas", 10F);
+            this.chkOrganizarPlaylist.ForeColor = CorTextoClaro;
+            this.chkOrganizarPlaylist.Location = new System.Drawing.Point(40, 392);
+            this.chkOrganizarPlaylist.Name = "chkOrganizarPlaylist";
+            this.chkOrganizarPlaylist.Size = new System.Drawing.Size(500, 26);
+            this.chkOrganizarPlaylist.TabIndex = 9;
+            this.chkOrganizarPlaylist.Text = "Organizar cada playlist em uma subpasta própria";
+            //
+            // lblPlaylistConfigDescricao
+            //
+            this.lblPlaylistConfigDescricao.AutoSize = true;
+            this.lblPlaylistConfigDescricao.Font = new System.Drawing.Font("Consolas", 8.5F);
+            this.lblPlaylistConfigDescricao.ForeColor = System.Drawing.Color.FromArgb(220, 230, 226);
+            this.lblPlaylistConfigDescricao.Location = new System.Drawing.Point(40, 420);
+            this.lblPlaylistConfigDescricao.MaximumSize = new System.Drawing.Size(650, 0);
+            this.lblPlaylistConfigDescricao.Name = "lblPlaylistConfigDescricao";
+            this.lblPlaylistConfigDescricao.Size = new System.Drawing.Size(600, 15);
+            this.lblPlaylistConfigDescricao.TabIndex = 10;
+            this.lblPlaylistConfigDescricao.Text = "Marcado: 1 item no Histórico por playlist. Desmarcado: 1 item por vídeo.";
             //
             // btnAtualizarYtDlp
             //

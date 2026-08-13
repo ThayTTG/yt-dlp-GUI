@@ -4,6 +4,7 @@ using System.IO;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Windows.Forms;
+using Guna.UI2.WinForms;
 
 namespace YtDlpGui
 {
@@ -24,6 +25,10 @@ namespace YtDlpGui
         private Process? _processoAtual;
         private bool _canceladoPeloUsuario;
         private string? _ultimoArquivoBaixado;
+        private readonly System.Collections.Generic.List<string> _arquivosBaixadosNestaSessao = new();
+        private string? _nomePlaylistAtual;
+        private int _itemAtualPlaylist;
+        private int _totalItensPlaylist;
         private string? _ultimoErro;
         private bool _avisoBotMostrado;
 
@@ -33,6 +38,10 @@ namespace YtDlpGui
             new Regex(@"Destination:\s*(.+)$", RegexOptions.Compiled);
         private static readonly Regex RegexErro =
             new Regex(@"^ERROR:\s*(.+)$", RegexOptions.Compiled);
+        private static readonly Regex RegexPlaylistNome =
+            new Regex(@"Downloading playlist:\s*(.+)$", RegexOptions.Compiled);
+        private static readonly Regex RegexPlaylistItem =
+            new Regex(@"Downloading item (\d+) of (\d+)", RegexOptions.Compiled);
 
         public MainForm()
         {
@@ -206,6 +215,12 @@ namespace YtDlpGui
             if (!ValidarEntradas(exigeFfmpeg: false))
                 return;
 
+            // ---- MÓDULO OPCIONAL: Filtro de Conteúdo (ver FiltroConteudo.cs) ----
+            // Sem "filtro-conteudo.json" na pasta do app, isto não faz nada.
+            if (!await PassaPeloFiltroDeConteudoAsync())
+                return;
+            // -----------------------------------------------------------------
+
             var argumentos = new System.Collections.Generic.List<string>
             {
                 txtUrl.Text.Trim(),
@@ -213,7 +228,7 @@ namespace YtDlpGui
                 "--merge-output-format", "mp4",
                 "--newline",
                 "-P", txtSavePath.Text,
-                "-o", "%(title)s.%(ext)s"
+                "-o", ObterTemplateDeSaida()
             };
 
             AdicionarArgumentoDePlaylist(argumentos);
@@ -233,6 +248,11 @@ namespace YtDlpGui
             if (!ValidarEntradas(exigeFfmpeg: true))
                 return;
 
+            // ---- MÓDULO OPCIONAL: Filtro de Conteúdo (ver FiltroConteudo.cs) ----
+            if (!await PassaPeloFiltroDeConteudoAsync())
+                return;
+            // -----------------------------------------------------------------
+
             var argumentos = new System.Collections.Generic.List<string>
             {
                 txtUrl.Text.Trim(),
@@ -240,7 +260,7 @@ namespace YtDlpGui
                 "--audio-format", "mp3",
                 "--newline",
                 "-P", txtSavePath.Text,
-                "-o", "%(title)s.%(ext)s"
+                "-o", ObterTemplateDeSaida()
             };
 
             AdicionarArgumentoDePlaylist(argumentos);
@@ -255,9 +275,75 @@ namespace YtDlpGui
             await ExecutarYtDlpAsync(argumentos, "MP3");
         }
 
+        // =================================================================
+        // MÓDULO OPCIONAL: integração com FiltroConteudo.cs
+        //
+        // Este bloco inteiro pode ser removido (junto das duas chamadas nos
+        // handlers de download acima) sem afetar mais nada no app — é
+        // exatamente por isso que a lógica de fato vive num arquivo à parte.
+        // Sem "filtro-conteudo.json" na pasta do .exe, CarregarConfiguracao()
+        // retorna Habilitado=false e este método sempre retorna true de
+        // imediato (nenhum custo extra, nenhuma chamada ao yt-dlp).
+        // =================================================================
+
+        /// <summary>
+        /// Retorna true se o download pode prosseguir (filtro desligado,
+        /// URL permitida, ou código mestre digitado corretamente). Retorna
+        /// false se o usuário cancelou ou não sabia o código.
+        /// </summary>
+        private async System.Threading.Tasks.Task<bool> PassaPeloFiltroDeConteudoAsync()
+        {
+            var configFiltro = FiltroConteudo.CarregarConfiguracao();
+            if (!configFiltro.Habilitado)
+                return true;
+
+            AtualizarStatus("Verificando conteúdo...");
+            var resultado = await FiltroConteudo.VerificarAsync(txtUrl.Text.Trim(), _ytDlpPath, configFiltro);
+
+            if (resultado.Permitido)
+            {
+                AtualizarStatus("Pronto para uso.");
+                return true;
+            }
+
+            RegistrarLog($"Filtro de conteúdo bloqueou: {resultado.Motivo} | URL: {txtUrl.Text.Trim()}");
+            AtualizarStatus("Bloqueado pelo filtro de conteúdo.");
+
+            bool liberadoPeloCodigo = FiltroConteudo.SolicitarCodigoMestre(this, configFiltro, resultado.Motivo ?? "Conteúdo bloqueado.");
+
+            if (liberadoPeloCodigo)
+            {
+                RegistrarLog("Bloqueio liberado com o código mestre.");
+                AtualizarStatus("Liberado pelo código mestre.");
+                return true;
+            }
+
+            AtualizarStatus("Download não iniciado (bloqueado pelo filtro de conteúdo).");
+            return false;
+        }
+
         private void AdicionarArgumentoDePlaylist(System.Collections.Generic.List<string> argumentos)
         {
             argumentos.Add(chkPlaylist.Checked ? "--yes-playlist" : "--no-playlist");
+        }
+
+        /// <summary>
+        /// Define onde/como os arquivos são nomeados e salvos:
+        /// - Vídeo único: sempre solto direto na pasta escolhida.
+        /// - Playlist + "organizar em subpastas" marcado: cria uma subpasta
+        ///   com o nome da playlist dentro da pasta escolhida, e cada vídeo
+        ///   vai lá dentro.
+        /// - Playlist sem a opção marcada: todos os vídeos soltos direto na
+        ///   pasta escolhida (comportamento antigo).
+        /// </summary>
+        private string ObterTemplateDeSaida()
+        {
+            if (chkPlaylist.Checked && chkOrganizarPlaylist.Checked)
+            {
+                return "%(playlist_title)s/%(title)s.%(ext)s";
+            }
+
+            return "%(title)s.%(ext)s";
         }
 
         private void AdicionarArgumentosDeAutenticacao(System.Collections.Generic.List<string> argumentos)
@@ -378,6 +464,10 @@ namespace YtDlpGui
         {
             _canceladoPeloUsuario = false;
             _ultimoArquivoBaixado = null;
+            _arquivosBaixadosNestaSessao.Clear();
+            _nomePlaylistAtual = null;
+            _itemAtualPlaylist = 0;
+            _totalItensPlaylist = 0;
             _ultimoErro = null;
             _avisoBotMostrado = false;
 
@@ -431,20 +521,8 @@ namespace YtDlpGui
                         AtualizarStatus("Download concluído!");
                         AtualizarProgresso(100);
 
-                        string nomeArquivo = string.IsNullOrEmpty(_ultimoArquivoBaixado)
-                            ? "(nome não identificado)"
-                            : Path.GetFileName(_ultimoArquivoBaixado);
-
-                        GerenciadorHistorico.Adicionar(new HistoricoItem
-                        {
-                            DataHora = DateTime.Now,
-                            Tipo = tipoParaHistorico,
-                            Titulo = nomeArquivo,
-                            Pasta = txtSavePath.Text,
-                            Url = txtUrl.Text.Trim()
-                        });
-
-                        MostrarNotificacao("Download concluído", nomeArquivo);
+                        string nomeParaNotificacao = RegistrarHistoricoDoDownload(tipoParaHistorico);
+                        MostrarNotificacao("Download concluído", nomeParaNotificacao);
                     }
                 }
                 else
@@ -474,7 +552,90 @@ namespace YtDlpGui
             }
         }
 
-        /// <summary>Traduz o erro mais comum do yt-dlp para uma frase amigável.</summary>
+        /// <summary>
+        /// Registra o(s) item(ns) desse download no histórico e retorna um
+        /// texto curto para usar na notificação do Windows.
+        /// - Vídeo único: um item, como sempre foi.
+        /// - Playlist + "organizar em subpastas": UM item representando a
+        ///   playlist inteira (nome + quantidade de vídeos), apontando para
+        ///   a subpasta criada.
+        /// - Playlist sem essa opção: um item para CADA vídeo baixado
+        ///   (antes, só o último vídeo da playlist entrava no histórico).
+        /// </summary>
+        private string RegistrarHistoricoDoDownload(string tipoParaHistorico)
+        {
+            bool ehPlaylist = chkPlaylist.Checked;
+            var agora = DateTime.Now;
+
+            if (!ehPlaylist)
+            {
+                string nomeArquivo = string.IsNullOrEmpty(_ultimoArquivoBaixado)
+                    ? "(nome não identificado)"
+                    : Path.GetFileName(_ultimoArquivoBaixado);
+
+                GerenciadorHistorico.Adicionar(new HistoricoItem
+                {
+                    DataHora = agora,
+                    Tipo = tipoParaHistorico,
+                    Titulo = nomeArquivo,
+                    Pasta = txtSavePath.Text,
+                    Url = txtUrl.Text.Trim()
+                });
+
+                return nomeArquivo;
+            }
+
+            if (chkOrganizarPlaylist.Checked)
+            {
+                string nomePlaylist = string.IsNullOrWhiteSpace(_nomePlaylistAtual)
+                    ? "Playlist"
+                    : _nomePlaylistAtual!;
+                string pastaPlaylist = Path.Combine(txtSavePath.Text, nomePlaylist);
+                string titulo = $"{nomePlaylist} ({_arquivosBaixadosNestaSessao.Count} vídeos)";
+
+                GerenciadorHistorico.Adicionar(new HistoricoItem
+                {
+                    DataHora = agora,
+                    Tipo = tipoParaHistorico,
+                    Titulo = titulo,
+                    Pasta = pastaPlaylist,
+                    Url = txtUrl.Text.Trim()
+                });
+
+                return titulo;
+            }
+
+            // Playlist sem agrupamento: um item de histórico por vídeo baixado.
+            if (_arquivosBaixadosNestaSessao.Count == 0)
+            {
+                // Fallback de segurança, caso nenhuma linha "Destination:" tenha sido capturada.
+                GerenciadorHistorico.Adicionar(new HistoricoItem
+                {
+                    DataHora = agora,
+                    Tipo = tipoParaHistorico,
+                    Titulo = "(itens da playlist não identificados)",
+                    Pasta = txtSavePath.Text,
+                    Url = txtUrl.Text.Trim()
+                });
+                return "Playlist concluída";
+            }
+
+            foreach (var caminho in _arquivosBaixadosNestaSessao)
+            {
+                GerenciadorHistorico.Adicionar(new HistoricoItem
+                {
+                    DataHora = agora,
+                    Tipo = tipoParaHistorico,
+                    Titulo = Path.GetFileName(caminho),
+                    Pasta = txtSavePath.Text,
+                    Url = txtUrl.Text.Trim()
+                });
+            }
+
+            return $"Playlist: {_arquivosBaixadosNestaSessao.Count} vídeos baixados";
+        }
+
+
         private static string TraduzirErro(string? erroBruto)
         {
             if (string.IsNullOrWhiteSpace(erroBruto))
@@ -532,20 +693,53 @@ namespace YtDlpGui
                     out double percentual))
             {
                 AtualizarProgresso(percentual);
-                AtualizarStatus($"Baixando... {percentual:0}%");
+
+                if (chkPlaylist.Checked && _totalItensPlaylist > 0)
+                {
+                    AtualizarStatus($"Baixando vídeo {_itemAtualPlaylist} de {_totalItensPlaylist}... {percentual:0}%");
+                }
+                else
+                {
+                    AtualizarStatus($"Baixando... {percentual:0}%");
+                }
             }
 
             var matchDestino = RegexDestino.Match(linha);
             if (matchDestino.Success)
             {
-                _ultimoArquivoBaixado = matchDestino.Groups[1].Value.Trim();
+                string caminho = matchDestino.Groups[1].Value.Trim();
+                _ultimoArquivoBaixado = caminho;
+
+                // Evita duplicar o mesmo arquivo caso o yt-dlp imprima a linha mais de uma vez
+                // (acontece, por exemplo, quando há etapas de remux/merge sobre o mesmo destino).
+                if (_arquivosBaixadosNestaSessao.Count == 0 ||
+                    _arquivosBaixadosNestaSessao[^1] != caminho)
+                {
+                    _arquivosBaixadosNestaSessao.Add(caminho);
+                }
+            }
+
+            var matchPlaylistNome = RegexPlaylistNome.Match(linha);
+            if (matchPlaylistNome.Success)
+            {
+                _nomePlaylistAtual = matchPlaylistNome.Groups[1].Value.Trim();
+            }
+
+            var matchPlaylistItem = RegexPlaylistItem.Match(linha);
+            if (matchPlaylistItem.Success &&
+                int.TryParse(matchPlaylistItem.Groups[1].Value, out int itemAtual) &&
+                int.TryParse(matchPlaylistItem.Groups[2].Value, out int totalItens))
+            {
+                _itemAtualPlaylist = itemAtual;
+                _totalItensPlaylist = totalItens;
+                AtualizarStatus($"Baixando vídeo {itemAtual} de {totalItens}...");
             }
 
             if (linha.Contains("[ExtractAudio]") || linha.Contains("Extracting audio"))
                 AtualizarStatus("Convertendo para MP3...");
             else if (linha.Contains("[Merger]") || linha.Contains("Merging formats"))
                 AtualizarStatus("Finalizando arquivo...");
-            else if (linha.Contains("Extracting URL"))
+            else if (linha.Contains("Extracting URL") && !chkPlaylist.Checked)
                 AtualizarStatus("Processando URL...");
             else if (linha.Contains("has already been downloaded"))
                 AtualizarStatus("Arquivo já existe, pulando...");
@@ -600,6 +794,7 @@ namespace YtDlpGui
             btnDownloadMp3.Enabled = !emAndamento;
             txtUrl.Enabled = !emAndamento;
             chkPlaylist.Enabled = !emAndamento;
+            chkOrganizarPlaylist.Enabled = !emAndamento;
             btnAlterarLocal.Enabled = !emAndamento;
             btnAtualizarYtDlp.Enabled = !emAndamento;
             radSemCookies.Enabled = !emAndamento;
@@ -618,11 +813,58 @@ namespace YtDlpGui
         // Página Configurações (autenticação + atualizar yt-dlp)
         // ---------------------------------------------------------------
 
+        // Evita reentrância ao desmarcar os outros radios programaticamente abaixo.
+        private bool _atualizandoOpcaoDeAutenticacao;
+
+        /// <summary>
+        /// O Guna2RadioButton, ao contrário do RadioButton nativo do Windows,
+        /// NÃO desmarca automaticamente os "irmãos" quando um é marcado —
+        /// por isso o bug relatado (marcar "cookies do navegador" e, ao
+        /// voltar pra tela, aparecer "cookies.txt" marcado: os dois ficavam
+        /// marcados ao mesmo tempo por baixo dos panos). Aqui forçamos a
+        /// exclusividade manualmente.
+        /// </summary>
         private void OpcaoDeAutenticacao_CheckedChanged(object sender, EventArgs e)
         {
+            if (_atualizandoOpcaoDeAutenticacao)
+                return;
+
+            if (sender is Guna2RadioButton radioClicado && radioClicado.Checked)
+            {
+                _atualizandoOpcaoDeAutenticacao = true;
+                if (radSemCookies != radioClicado) radSemCookies.Checked = false;
+                if (radCookiesNavegador != radioClicado) radCookiesNavegador.Checked = false;
+                if (radCookiesArquivo != radioClicado) radCookiesArquivo.Checked = false;
+                _atualizandoOpcaoDeAutenticacao = false;
+            }
+
             cmbNavegador.Enabled = radCookiesNavegador.Checked;
             txtCookiesArquivo.Enabled = radCookiesArquivo.Checked;
             btnSelecionarCookies.Enabled = radCookiesArquivo.Checked;
+        }
+
+        /// <summary>
+        /// Abre a página oficial do yt-dlp com instruções de como exportar o
+        /// arquivo cookies.txt do navegador (resolve a reclamação de que essa
+        /// opção é confusa sem contexto nenhum na tela).
+        /// </summary>
+        private void btnAjudaCookies_Click(object sender, EventArgs e)
+        {
+            try
+            {
+                Process.Start(new ProcessStartInfo
+                {
+                    FileName = "https://github.com/yt-dlp/yt-dlp/wiki/Extractors#exporting-youtube-cookies",
+                    UseShellExecute = true
+                });
+            }
+            catch
+            {
+                MessageBox.Show(this,
+                    "Não foi possível abrir o navegador. Acesse manualmente:\n" +
+                    "https://github.com/yt-dlp/yt-dlp/wiki/Extractors#exporting-youtube-cookies",
+                    "Ajuda", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            }
         }
 
         private void btnSelecionarCookies_Click(object sender, EventArgs e)

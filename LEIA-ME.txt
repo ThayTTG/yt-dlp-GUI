@@ -51,8 +51,10 @@ Na tela inicial (Home):
 3. Se o link for de uma playlist e você quiser baixar todos os
    vídeos dela, marque "Baixar Playlist" ANTES de clicar em baixar
    (por padrão, baixa só o vídeo do link).
-4. Acompanhe o progresso na barra inferior. Você pode navegar para
-   outras telas enquanto o download continua rodando.
+4. Acompanhe o progresso na barra inferior. Em playlists, a mensagem
+   mostra qual vídeo está sendo baixado no momento (ex: "Baixando
+   vídeo 3 de 12..."). Você pode navegar para outras telas enquanto
+   o download continua rodando.
 5. Quando terminar (ou se der algum erro), o Windows mostra uma
    notificação avisando — mesmo que a janela esteja minimizada.
 
@@ -72,6 +74,11 @@ clique com o botão direito) para abrir a pasta onde ele foi salvo.
 O botão "Limpar Histórico" apaga essa lista (não apaga os arquivos
 já baixados, só o registro).
 
+Quando você baixa uma PLAYLIST, cada vídeo aparece como um item
+separado no histórico — a não ser que você tenha marcado "Organizar
+cada playlist em uma subpasta própria" nas Configurações, caso em
+que a playlist inteira aparece como um único item.
+
 --------------------------------------------------
 7) CONFIGURAÇÕES
 --------------------------------------------------
@@ -80,8 +87,16 @@ Vá na tela de CONFIGURAÇÕES (ícone de engrenagem) se:
 - O YouTube pedir para "confirmar que você não é um robô": marque
   "Usar cookies do navegador" e escolha o navegador em que você está
   logado no YouTube (Chrome, Edge, Firefox, etc.) — o programa lê os
-  cookies automaticamente. Ou, se preferir, marque "Usar arquivo
-  cookies.txt" e selecione um arquivo exportado do navegador.
+  cookies automaticamente e é a forma mais simples. Se preferir usar
+  um arquivo cookies.txt em vez disso, toque no botão "?" ao lado
+  dessa opção para ver o passo a passo de como gerar esse arquivo no
+  seu navegador (é feito com uma extensão gratuita, você não precisa
+  "criar" nada do zero).
+- Você baixa playlists com frequência: marque "Organizar cada
+  playlist em uma subpasta própria" para que cada playlist baixada
+  crie sua própria pastinha (com o nome da playlist) dentro do local
+  de salvamento, em vez de misturar todos os vídeos soltos na mesma
+  pasta.
 - Os downloads pararem de funcionar do dia para a noite: clique em
   "Atualizar yt-dlp". O YouTube muda o funcionamento do site de vez
   em quando, e isso corrige a maioria dos problemas.

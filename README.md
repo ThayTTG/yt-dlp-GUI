@@ -11,11 +11,13 @@ bruta do yt-dlp em nenhum momento.
 
 ```
 YtDlpGui/
-├── YtDlpGui.csproj              # projeto (.NET 8, WinForms, pacote Guna.UI2.WinForms)
-├── Program.cs                   # ponto de entrada da aplicação
+├── YtDlpGui.csproj            # projeto (.NET 8, WinForms, pacote Guna.UI2.WinForms)
+├── Program.cs                  # ponto de entrada da aplicação
 ├── MainForm.cs                  # toda a lógica: navegação, download, notificações
 ├── MainForm.Designer.cs         # layout visual (barra lateral + 4 páginas + status bar)
 ├── GerenciadorHistorico.cs      # persistência do histórico em JSON (%AppData%)
+├── FiltroConteudo.cs             # MÓDULO OPCIONAL: bloqueio de sites (ver seção 9)
+├── filtro-conteudo.exemplo.json  # exemplo de configuração do filtro (inerte por si só)
 ├── icon.ico                     # ícone do app (janela, taskbar, .exe)
 ├── Assets/                      # ícones e ilustrações (logo, navegação, botões)
 ├── publicar.ps1                 # script que gera o pacote pronto para distribuir
@@ -44,12 +46,12 @@ Diferente da versão anterior (tudo em uma única tela com log rolável), o
 app agora é dividido em uma **casca de navegação** (`MainForm`) com quatro
 "páginas" — painéis que ocupam a mesma área e alternam visibilidade:
 
-| Painel                 | Conteúdo                                                                 |
-|----------------------- |--------------------------------------------------------------------------|
+| Painel               | Conteúdo                                             |
+|-----------------------|-------------------------------------------------------|
 | `pnlHome`              | Campo de URL + botões "Baixar .MP4" / "Baixar .MP3" + toggle de playlist |
-| `pnlHistorico`         | Lista (Tipo/Nome/Data) dos downloads já concluídos                       |
-| `pnlPasta`             | Local de salvamento + botão "Alterar Local"                              |
-| `pnlConfiguracoes`     | Autenticação por cookies + botão "Atualizar yt-dlp"                      |
+| `pnlHistorico`         | Lista (Tipo/Nome/Data) dos downloads já concluídos    |
+| `pnlPasta`             | Local de salvamento + botão "Alterar Local"           |
+| `pnlConfiguracoes`     | Autenticação por cookies + botão "Atualizar yt-dlp"   |
 
 A troca de página é feita por `MostrarPagina(string pagina)` em
 `MainForm.cs`, chamada pelos cliques nos ícones da barra lateral
@@ -115,24 +117,64 @@ abrir a pasta de um item (duplo clique ou menu de contexto) e limpar tudo.
 Ações sem tipo associado (como "Atualizar yt-dlp") não entram na lista
 exibida — o filtro está em `CarregarHistorico()`.
 
+**Comportamento com playlists** (corrigido — antes só o último vídeo da
+playlist entrava no histórico): o método `RegistrarHistoricoDoDownload()`
+decide como registrar com base no checkbox "Organizar cada playlist em uma
+subpasta própria" (tela Configurações):
+
+- **Desmarcado** (padrão): um item de histórico **para cada vídeo**
+  baixado da playlist, capturados durante o download em
+  `_arquivosBaixadosNestaSessao` (uma lista, não mais uma única variável).
+- **Marcado**: um único item representando a playlist inteira (nome +
+  quantidade de vídeos), apontando para a subpasta criada.
+
 ## 6. Autenticação por cookies
 
-Página "Configurações" com três opções (mutuamente exclusivas via
-`Guna2RadioButton`):
+Página "Configurações" com três opções (agora **corretamente exclusivas**
+entre si — veja o bug abaixo):
 
 - **Não usar cookies** (padrão)
 - **Cookies do navegador**: `--cookies-from-browser <navegador>`
 - **Arquivo cookies.txt**: `--cookies <caminho>`, selecionado via
-  `OpenFileDialog`
+  `OpenFileDialog`. Um botão "?" ao lado do título abre a página oficial do
+  yt-dlp com instruções de como exportar esse arquivo do navegador
+  (`btnAjudaCookies_Click`), já que testers relataram confusão sobre como
+  "fabricar" esse arquivo sozinho. O campo também ganhou um
+  `PlaceholderText` explicativo.
 
 Resolve o erro "Sign in to confirm you're not a bot" do YouTube.
 
-## 7. Cancelar download e suporte a playlist
+### Bug corrigido: os dois radios ficavam marcados ao mesmo tempo
+
+`Guna2RadioButton`, diferente do `RadioButton` nativo do WinForms, **não**
+desmarca automaticamente os "irmãos" no mesmo container quando um é
+marcado — isso é comportamento do Win32 `BM_CLICK`/grupo nativo, que o
+Guna2RadioButton não replica sozinho. Resultado: era possível marcar
+"cookies do navegador" e, ao trocar de tela e voltar, ver "cookies.txt"
+marcado — na real os dois estavam marcados ao mesmo tempo por baixo dos
+panos, e a exibição só "escolhia" um pra mostrar.
+
+Corrigido em `OpcaoDeAutenticacao_CheckedChanged`: agora a exclusividade é
+forçada manualmente (desmarca os outros dois sempre que um é marcado),
+com uma flag `_atualizandoOpcaoDeAutenticacao` para evitar reentrância
+infinita do evento `CheckedChanged`.
+
+## 7. Cancelar download, playlist e organização em subpastas
 
 - Botão circular vermelho "X" (`btnCancelar`) mata o processo do yt-dlp
   (e o ffmpeg filho) via `Process.Kill(entireProcessTree: true)`.
 - Toggle "Baixar Playlist" na Home controla `--yes-playlist` /
   `--no-playlist` (desmarcado por padrão, mais seguro para uso educacional).
+- Novo checkbox **"Organizar cada playlist em uma subpasta própria"**
+  (tela Configurações, `chkOrganizarPlaylist`): quando marcado junto com
+  "Baixar Playlist", o template de saída passa de `%(title)s.%(ext)s` para
+  `%(playlist_title)s/%(title)s.%(ext)s` (método `ObterTemplateDeSaida()`),
+  fazendo o próprio yt-dlp criar a subpasta com o nome da playlist dentro
+  do local de salvamento escolhido.
+- Durante o download de uma playlist, o status agora mostra "Baixando
+  vídeo X de Y..." (capturado via `RegexPlaylistItem`, que interpreta as
+  linhas `Downloading item X of Y` do yt-dlp), além da porcentagem do
+  vídeo atual.
 
 ## 8. Visual (Guna.UI2 + paleta do mockup)
 
@@ -171,7 +213,114 @@ Exige internet na primeira vez (baixa o pacote do NuGet, fixado na versão
 `2.0.4.6` no `.csproj`). O `publicar.ps1` já roda `dotnet publish`, que
 restaura automaticamente.
 
-## 9. Distribuição para usuários comuns (`publicar.ps1`)
+## 9. Filtro de conteúdo (opcional — para uso em sala de aula)
+
+Módulo pensado para quem usa o app com alunos e quer restringir quais
+sites podem ser baixados, evitando que o "generic extractor" do yt-dlp
+(que consegue extrair vídeo embutido em praticamente qualquer página da
+internet) seja usado para baixar conteúdo impróprio.
+
+### Por que é allowlist, e não blocklist
+
+O yt-dlp já inclui extractors dedicados para sites adultos, e o
+"generic extractor" tenta baixar de qualquer site não catalogado. Tentar
+listar sites *proibidos* é uma corrida perdida — sempre vai faltar um.
+Por isso o módulo funciona ao contrário: você define quais sites são
+**permitidos** (por padrão, só `youtube.com`/`youtu.be`) e tudo mais é
+bloqueado.
+
+### Por que é um arquivo separado
+
+`FiltroConteudo.cs` **não é referenciado em nenhum outro lugar do projeto
+por padrão** — a única forma de ele fazer alguma coisa é existir um
+arquivo `filtro-conteudo.json` na mesma pasta do `.exe`, com
+`"habilitado": true`. Sem esse arquivo (o caso de qualquer pessoa que
+clonar o repositório no GitHub), `FiltroConteudo.CarregarConfiguracao()`
+retorna uma configuração desligada e `PassaPeloFiltroDeConteudoAsync()`
+(chamado em `MainForm.cs`, nos dois botões de download) retorna
+imediatamente `true` — nenhuma verificação, nenhuma chamada extra ao
+yt-dlp, nenhum impacto em quem não configurou nada.
+
+Ou seja: **o filtro só existe pra quem explicitamente criar o arquivo de
+configuração.** Isso resolve o problema de "alguém clona o projeto pra
+baixar do Pinterest e o programa simplesmente bloqueia sem aviso".
+
+### O que ele verifica
+
+1. **Domínio da URL** (`FiltroConteudo.DominioPermitido`): compara o host
+   da URL colada contra `dominiosPermitidos`. Aceita subdomínios
+   automaticamente (`youtube.com` na lista libera `www.`, `m.`,
+   `music.youtube.com`, etc.).
+2. **Restrição de idade do próprio YouTube** (opcional, campo
+   `bloquearRestricaoDeIdade`): roda `yt-dlp --dump-json --skip-download`
+   antes de baixar de verdade, lê o campo `age_limit` da resposta, e
+   bloqueia se vier ≥ 18. Isso adiciona alguns segundos de espera antes do
+   download começar — é o custo dessa checagem.
+
+Se qualquer uma das duas checagens bloquear, aparece um diálogo pedindo o
+**código mestre** (construído inteiramente em código dentro do próprio
+`FiltroConteudo.cs`, sem precisar de arquivo Designer). Digitando
+corretamente, aquele download específico é liberado.
+
+### Como ativar (só na SUA cópia, sem afetar o GitHub)
+
+**Passo 1 — Gere o hash do seu código mestre.** O código nunca fica em
+texto puro no arquivo de configuração, só o hash SHA-256 dele. No
+PowerShell:
+
+```powershell
+$codigo = "coloque-seu-codigo-aqui"
+$bytes  = [System.Text.Encoding]::UTF8.GetBytes($codigo)
+$hash   = [System.Security.Cryptography.SHA256]::Create().ComputeHash($bytes)
+([System.BitConverter]::ToString($hash) -replace '-', '').ToLower()
+```
+
+Isso imprime uma sequência de 64 caracteres (ex.: para o código
+`professor123`, o hash é
+`bc1f12dae4eded5bc6a976a10aff2b93f36b5b26dcdd22da485b2fecd4b3b119`).
+Copie o resultado.
+
+**Passo 2 — Crie o arquivo de configuração.** Copie
+`filtro-conteudo.exemplo.json` para `filtro-conteudo.json` (mesma pasta,
+mesma pasta onde o `.exe` compilado vai parar) e edite:
+
+```json
+{
+  "habilitado": true,
+  "dominiosPermitidos": [ "youtube.com", "youtu.be" ],
+  "bloquearRestricaoDeIdade": true,
+  "hashCodigoMestre": "bc1f12dae4eded5bc6a976a10aff2b93f36b5b26dcdd22da485b2fecd4b3b119"
+}
+```
+
+**Passo 3 — Coloque o arquivo junto do `.exe`.** Não precisa recompilar
+nada — é só garantir que `filtro-conteudo.json` esteja na mesma pasta do
+`YtDlpGui.exe` (a pasta de saída do build, ex.:
+`bin\Debug\net8.0-windows\`, ou a pasta final se você usar o
+`publicar.ps1`). Ele é lido toda vez que um download é iniciado, então dá
+pra editar/ligar/desligar mesmo com o app já publicado, sem rebuild.
+
+**Se você usa o `publicar.ps1`:** ele não copia `filtro-conteudo.json`
+automaticamente (só o `.exemplo.json`, como documentação) — depois que o
+script gerar a pasta `Distribuicao/`, copie seu `filtro-conteudo.json`
+real pra lá manualmente antes de zipar/distribuir pros alunos. Assim o
+próprio script continua 100% genérico e reutilizável por qualquer pessoa
+que pegar o projeto no GitHub.
+
+### Limitações (importante ter em mente)
+
+- **Não é segurança real, é uma barreira de uso normal.** É um app
+  local — um aluno com conhecimento técnico poderia abrir o `.json` e
+  trocar `"habilitado": false`, ou editar o `.cs` e recompilar. Serve para
+  evitar uso indevido no dia a dia da sala, não para um cenário
+  adversarial sério.
+- A checagem de `age_limit` só existe pra URLs que passaram no filtro de
+  domínio primeiro (ou seja, hoje só se aplica a URLs do YouTube).
+- Vídeos sem o campo `age_limit` na resposta do yt-dlp (extractor não
+  fornece, ou vídeo já bloqueado antes de gerar metadados) são tratados
+  como sem restrição — não é 100% infalível.
+
+## 10. Distribuição para usuários comuns (`publicar.ps1`)
 
 Continua funcionando como antes: compila em modo self-contained + single
 file, baixa `yt-dlp.exe` e `ffmpeg.exe` automaticamente, copia o
@@ -188,7 +337,7 @@ cd YtDlpGui
 > `dotnet publish`, pois ambos estão marcados como `CopyToOutputDirectory`
 > no `.csproj`. Não é necessário alterar o `publicar.ps1` para isso.
 
-## 10. Possíveis melhorias futuras (fora do escopo atual)
+## 11. Possíveis melhorias futuras (fora do escopo atual)
 
 - Notificações estilo "toast" do Windows 11 (via
   `Microsoft.Toolkit.Uwp.Notifications`), em vez de balão clássico.
@@ -196,3 +345,29 @@ cd YtDlpGui
 - Assinatura digital do executável, para eliminar o aviso do SmartScreen.
 - Indicador visual de "download em andamento" nos ícones da barra lateral
   mesmo quando o usuário está em outra página.
+
+## 12. Sugestões extras (para avaliação — nada disso foi implementado)
+
+Ideias que surgiram olhando o código atual, deixadas aqui só para você
+decidir se vale a pena entrar num próximo ciclo:
+
+- **Fila de downloads**: hoje só dá pra baixar um vídeo/playlist por vez
+  (os botões ficam bloqueados durante o download). Uma fila permitiria
+  colar várias URLs e deixar baixando em sequência sem precisar ficar
+  vigiando.
+- **Detectar link de playlist automaticamente**: em vez do usuário
+  precisar lembrar de marcar "Baixar Playlist", o app poderia detectar
+  `&list=` na URL colada e sugerir/marcar o checkbox sozinho (com opção de
+  desmarcar).
+- **Botão "Recomeçar do zero" no Histórico**: re-baixar um item antigo
+  clicando nele, sem precisar colar a URL de novo (a URL original já é
+  salva em `HistoricoItem.Url`, só falta a ação na tela).
+- **Validação de espaço em disco** antes de iniciar um download grande
+  (playlists podem ser pesadas).
+- **Indicador de velocidade/tamanho** (ex.: "12 MB/s — 340 MB de 1.2 GB"),
+  já que o yt-dlp imprime isso na mesma linha do progresso — só falta
+  capturar com outra regex e mostrar ao lado da porcentagem.
+- **Tema claro/escuro alternável** pelo usuário, em vez de só a paleta
+  fixa atual.
+- **Verificação automática de atualização do yt-dlp** ao abrir o
+  app (silenciosa, uma vez por dia), em vez de depender do botão manual.
