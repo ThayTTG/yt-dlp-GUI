@@ -107,6 +107,7 @@ namespace YtDlpGui
             picLogo.Image = CarregarImagem("logo_transparente.png");
             picLogoGrande.Image = CarregarImagem("logo_home_grande.png");
             picIlustracaoPasta.Image = CarregarImagem("ilustracao_pasta.png");
+            picLogoConfig.Image = CarregarImagem("logo_home_grande.png");
 
             AtualizarIconesDeNavegacao("home");
         }
@@ -157,6 +158,11 @@ namespace YtDlpGui
             pnlHistorico.Visible = pagina == "historico";
             pnlPasta.Visible = pagina == "pasta";
             pnlConfiguracoes.Visible = pagina == "config";
+
+            // As páginas ocupam a área inteira de pnlContent (inclusive o canto
+            // onde o botão Cancelar fica), então é preciso reafirmar que ele
+            // continua no topo do z-order toda vez que a página é trocada.
+            btnCancelar.BringToFront();
 
             AtualizarIconesDeNavegacao(pagina);
 
@@ -507,6 +513,8 @@ namespace YtDlpGui
                 if (_canceladoPeloUsuario)
                 {
                     AtualizarStatus("Download cancelado.");
+                    if (string.IsNullOrEmpty(tipoParaHistorico))
+                        lblAtualizarStatus.Text = "Cancelado.";
                 }
                 else if (processo.ExitCode == 0)
                 {
@@ -514,6 +522,7 @@ namespace YtDlpGui
                     {
                         // Ação sem histórico associado (ex.: "yt-dlp -U").
                         AtualizarStatus("Atualização concluída!");
+                        lblAtualizarStatus.Text = "Tudo em dia!";
                         MostrarNotificacao("yt-dlp atualizado", "O yt-dlp foi verificado/atualizado com sucesso.");
                     }
                     else
@@ -529,6 +538,8 @@ namespace YtDlpGui
                 {
                     string mensagem = TraduzirErro(_ultimoErro);
                     AtualizarStatus("Falha no download.");
+                    if (string.IsNullOrEmpty(tipoParaHistorico))
+                        lblAtualizarStatus.Text = "Falha ao atualizar.";
                     MostrarNotificacao("Falha no download", mensagem, erro: true);
                     MessageBox.Show(this, mensagem, "Falha no download", MessageBoxButtons.OK, MessageBoxIcon.Error);
                 }
@@ -802,7 +813,6 @@ namespace YtDlpGui
             radCookiesArquivo.Enabled = !emAndamento;
             cmbNavegador.Enabled = !emAndamento && radCookiesNavegador.Checked;
             txtCookiesArquivo.Enabled = !emAndamento && radCookiesArquivo.Checked;
-            btnSelecionarCookies.Enabled = !emAndamento && radCookiesArquivo.Checked;
 
             btnCancelar.Enabled = emAndamento;
 
@@ -840,7 +850,6 @@ namespace YtDlpGui
 
             cmbNavegador.Enabled = radCookiesNavegador.Checked;
             txtCookiesArquivo.Enabled = radCookiesArquivo.Checked;
-            btnSelecionarCookies.Enabled = radCookiesArquivo.Checked;
         }
 
         /// <summary>
@@ -867,7 +876,13 @@ namespace YtDlpGui
             }
         }
 
-        private void btnSelecionarCookies_Click(object sender, EventArgs e)
+        /// <summary>
+        /// O campo de cookies.txt agora é clicável (só quando a opção
+        /// correspondente está marcada, já que fica desabilitado caso
+        /// contrário) — substitui o antigo botão "Buscar" separado, deixando
+        /// a coluna mais limpa e alinhada ao restante do layout.
+        /// </summary>
+        private void txtCookiesArquivo_Click(object sender, EventArgs e)
         {
             using var dialogo = new OpenFileDialog
             {
@@ -891,6 +906,7 @@ namespace YtDlpGui
                 return;
             }
 
+            lblAtualizarStatus.Text = "Verificando...";
             await ExecutarYtDlpAsync(new System.Collections.Generic.List<string> { "-U" }, tipoParaHistorico: "");
         }
 

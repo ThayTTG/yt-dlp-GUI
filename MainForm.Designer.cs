@@ -90,23 +90,29 @@ namespace YtDlpGui
 
         #endregion
 
-        #region Página Configurações (autenticação por cookies)
+        #region Página Configurações (2 colunas: cookies | playlist + atualização)
 
         private System.Windows.Forms.Panel pnlConfiguracoes;
-        private System.Windows.Forms.Label lblTituloConfig;
-        private System.Windows.Forms.Label lblCookiesArquivoTitulo;
+        private System.Windows.Forms.PictureBox picLogoConfig;
+
+        // Coluna esquerda — autenticação por cookies
+        private System.Windows.Forms.Label lblUsoCookiesTitulo;
         private Guna2Button btnAjudaCookies;
+        private System.Windows.Forms.Label lblOpcaoArquivoCookies;
         private Guna2RadioButton radCookiesArquivo;
         private Guna2TextBox txtCookiesArquivo;
-        private Guna2Button btnSelecionarCookies;
-        private System.Windows.Forms.Label lblCookiesNavegadorTitulo;
+        private System.Windows.Forms.Label lblOpcaoNavegadorCookies;
         private Guna2RadioButton radCookiesNavegador;
         private Guna2ComboBox cmbNavegador;
         private Guna2RadioButton radSemCookies;
         private System.Windows.Forms.Label lblSemCookies;
-        private System.Windows.Forms.Label lblPlaylistConfigTitulo;
+
+        // Coluna direita — playlists e atualização do yt-dlp
+        private System.Windows.Forms.Label lblPlaylistTitulo;
+        private System.Windows.Forms.Label lblPlaylistSubtitulo;
         private Guna2CheckBox chkOrganizarPlaylist;
-        private System.Windows.Forms.Label lblPlaylistConfigDescricao;
+        private System.Windows.Forms.Label lblAtualizarTitulo;
+        private System.Windows.Forms.Label lblAtualizarStatus;
         private Guna2Button btnAtualizarYtDlp;
 
         #endregion
@@ -133,7 +139,7 @@ namespace YtDlpGui
             botao.HoverState.FillColor = System.Drawing.Color.FromArgb(120, 190, 168);
             botao.DisabledState.FillColor = CorDesabilitadoFundo;
             botao.DisabledState.ForeColor = CorDesabilitadoTexto;
-            botao.ImageAlign = System.Windows.Forms.HorizontalAlignment.Center;
+            botao.ImageAlign = System.Windows.Forms.HorizontalAlignment.Left;
             botao.TextAlign = System.Windows.Forms.HorizontalAlignment.Center;
             botao.Animated = true;
         }
@@ -194,20 +200,22 @@ namespace YtDlpGui
             this.btnAlterarLocal = new Guna2Button();
 
             this.pnlConfiguracoes = new System.Windows.Forms.Panel();
-            this.lblTituloConfig = new System.Windows.Forms.Label();
-            this.lblCookiesArquivoTitulo = new System.Windows.Forms.Label();
+            this.picLogoConfig = new System.Windows.Forms.PictureBox();
+            this.lblUsoCookiesTitulo = new System.Windows.Forms.Label();
             this.btnAjudaCookies = new Guna2Button();
+            this.lblOpcaoArquivoCookies = new System.Windows.Forms.Label();
             this.radCookiesArquivo = new Guna2RadioButton();
             this.txtCookiesArquivo = new Guna2TextBox();
-            this.btnSelecionarCookies = new Guna2Button();
-            this.lblCookiesNavegadorTitulo = new System.Windows.Forms.Label();
+            this.lblOpcaoNavegadorCookies = new System.Windows.Forms.Label();
             this.radCookiesNavegador = new Guna2RadioButton();
             this.cmbNavegador = new Guna2ComboBox();
             this.radSemCookies = new Guna2RadioButton();
             this.lblSemCookies = new System.Windows.Forms.Label();
-            this.lblPlaylistConfigTitulo = new System.Windows.Forms.Label();
+            this.lblPlaylistTitulo = new System.Windows.Forms.Label();
+            this.lblPlaylistSubtitulo = new System.Windows.Forms.Label();
             this.chkOrganizarPlaylist = new Guna2CheckBox();
-            this.lblPlaylistConfigDescricao = new System.Windows.Forms.Label();
+            this.lblAtualizarTitulo = new System.Windows.Forms.Label();
+            this.lblAtualizarStatus = new System.Windows.Forms.Label();
             this.btnAtualizarYtDlp = new Guna2Button();
 
             ((System.ComponentModel.ISupportInitialize)(this.picLogo)).BeginInit();
@@ -216,6 +224,7 @@ namespace YtDlpGui
             ((System.ComponentModel.ISupportInitialize)(this.picNavConfig)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this.picLogoGrande)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this.picIlustracaoPasta)).BeginInit();
+            ((System.ComponentModel.ISupportInitialize)(this.picLogoConfig)).BeginInit();
             this.menuHistorico.SuspendLayout();
             this.SuspendLayout();
 
@@ -300,6 +309,7 @@ namespace YtDlpGui
             this.pnlContent.Controls.Add(this.pnlHistorico);
             this.pnlContent.Controls.Add(this.pnlHome);
             this.pnlContent.Controls.Add(this.btnCancelar);
+            this.btnCancelar.BringToFront();
             //
             // btnCancelar (círculo vermelho "X", flutuante no canto inferior direito)
             //
@@ -588,120 +598,125 @@ namespace YtDlpGui
             this.pnlConfiguracoes.Size = new System.Drawing.Size(730, 550);
             this.pnlConfiguracoes.TabIndex = 3;
             this.pnlConfiguracoes.Visible = false;
-            this.pnlConfiguracoes.Controls.Add(this.btnAtualizarYtDlp);
-            this.pnlConfiguracoes.Controls.Add(this.lblPlaylistConfigDescricao);
-            this.pnlConfiguracoes.Controls.Add(this.chkOrganizarPlaylist);
-            this.pnlConfiguracoes.Controls.Add(this.lblPlaylistConfigTitulo);
-            this.pnlConfiguracoes.Controls.Add(this.lblSemCookies);
-            this.pnlConfiguracoes.Controls.Add(this.radSemCookies);
-            this.pnlConfiguracoes.Controls.Add(this.cmbNavegador);
-            this.pnlConfiguracoes.Controls.Add(this.radCookiesNavegador);
-            this.pnlConfiguracoes.Controls.Add(this.lblCookiesNavegadorTitulo);
-            this.pnlConfiguracoes.Controls.Add(this.btnSelecionarCookies);
-            this.pnlConfiguracoes.Controls.Add(this.txtCookiesArquivo);
-            this.pnlConfiguracoes.Controls.Add(this.radCookiesArquivo);
+            this.pnlConfiguracoes.Controls.Add(this.picLogoConfig);
+            this.pnlConfiguracoes.Controls.Add(this.lblUsoCookiesTitulo);
             this.pnlConfiguracoes.Controls.Add(this.btnAjudaCookies);
-            this.pnlConfiguracoes.Controls.Add(this.lblCookiesArquivoTitulo);
-            this.pnlConfiguracoes.Controls.Add(this.lblTituloConfig);
+            this.pnlConfiguracoes.Controls.Add(this.lblOpcaoArquivoCookies);
+            this.pnlConfiguracoes.Controls.Add(this.radCookiesArquivo);
+            this.pnlConfiguracoes.Controls.Add(this.txtCookiesArquivo);
+            this.pnlConfiguracoes.Controls.Add(this.lblOpcaoNavegadorCookies);
+            this.pnlConfiguracoes.Controls.Add(this.radCookiesNavegador);
+            this.pnlConfiguracoes.Controls.Add(this.cmbNavegador);
+            this.pnlConfiguracoes.Controls.Add(this.radSemCookies);
+            this.pnlConfiguracoes.Controls.Add(this.lblSemCookies);
+            this.pnlConfiguracoes.Controls.Add(this.lblPlaylistTitulo);
+            this.pnlConfiguracoes.Controls.Add(this.lblPlaylistSubtitulo);
+            this.pnlConfiguracoes.Controls.Add(this.chkOrganizarPlaylist);
+            this.pnlConfiguracoes.Controls.Add(this.lblAtualizarTitulo);
+            this.pnlConfiguracoes.Controls.Add(this.lblAtualizarStatus);
+            this.pnlConfiguracoes.Controls.Add(this.btnAtualizarYtDlp);
             //
-            // lblTituloConfig
+            // picLogoConfig (mesma ilustração da Home, para manter a identidade visual)
             //
-            this.lblTituloConfig.AutoSize = true;
-            this.lblTituloConfig.Font = new System.Drawing.Font("Consolas", 16F);
-            this.lblTituloConfig.ForeColor = CorTextoClaro;
-            this.lblTituloConfig.Location = new System.Drawing.Point(40, 30);
-            this.lblTituloConfig.Name = "lblTituloConfig";
-            this.lblTituloConfig.Size = new System.Drawing.Size(200, 25);
-            this.lblTituloConfig.TabIndex = 0;
-            this.lblTituloConfig.Text = "Configurações";
+            this.picLogoConfig.Location = new System.Drawing.Point(275, 30);
+            this.picLogoConfig.Name = "picLogoConfig";
+            this.picLogoConfig.Size = new System.Drawing.Size(140, 140);
+            this.picLogoConfig.SizeMode = System.Windows.Forms.PictureBoxSizeMode.Zoom;
+            this.picLogoConfig.TabIndex = 0;
+            this.picLogoConfig.TabStop = false;
             //
-            // lblCookiesArquivoTitulo
+            // ===================== COLUNA ESQUERDA: COOKIES =====================
             //
-            this.lblCookiesArquivoTitulo.AutoSize = true;
-            this.lblCookiesArquivoTitulo.Font = new System.Drawing.Font("Consolas", 11F);
-            this.lblCookiesArquivoTitulo.ForeColor = CorTextoClaro;
-            this.lblCookiesArquivoTitulo.Location = new System.Drawing.Point(40, 90);
-            this.lblCookiesArquivoTitulo.Name = "lblCookiesArquivoTitulo";
-            this.lblCookiesArquivoTitulo.Size = new System.Drawing.Size(260, 18);
-            this.lblCookiesArquivoTitulo.TabIndex = 1;
-            this.lblCookiesArquivoTitulo.Text = "Usar arquivo cookies.txt exportado";
+            // lblUsoCookiesTitulo
+            //
+            this.lblUsoCookiesTitulo.AutoSize = true;
+            this.lblUsoCookiesTitulo.Font = new System.Drawing.Font("Consolas", 13F, System.Drawing.FontStyle.Bold);
+            this.lblUsoCookiesTitulo.ForeColor = CorTextoClaro;
+            this.lblUsoCookiesTitulo.Location = new System.Drawing.Point(40, 190);
+            this.lblUsoCookiesTitulo.Name = "lblUsoCookiesTitulo";
+            this.lblUsoCookiesTitulo.Size = new System.Drawing.Size(200, 22);
+            this.lblUsoCookiesTitulo.TabIndex = 1;
+            this.lblUsoCookiesTitulo.Text = "Uso de Cookies:";
             //
             // btnAjudaCookies
             //
             this.btnAjudaCookies.BorderRadius = 13;
-            this.btnAjudaCookies.FillColor = System.Drawing.Color.FromArgb(255, 255, 255, 60);
-            this.btnAjudaCookies.ForeColor = CorTextoClaro;
+            this.btnAjudaCookies.FillColor = CorAcento;
+            this.btnAjudaCookies.ForeColor = System.Drawing.Color.White;
             this.btnAjudaCookies.Font = new System.Drawing.Font("Consolas", 9F, System.Drawing.FontStyle.Bold);
-            this.btnAjudaCookies.HoverState.FillColor = System.Drawing.Color.FromArgb(255, 255, 255, 100);
-            this.btnAjudaCookies.Location = new System.Drawing.Point(320, 88);
+            this.btnAjudaCookies.HoverState.FillColor = CorAcentoHover;
+            this.btnAjudaCookies.Location = new System.Drawing.Point(232, 192);
             this.btnAjudaCookies.Name = "btnAjudaCookies";
             this.btnAjudaCookies.Size = new System.Drawing.Size(26, 26);
-            this.btnAjudaCookies.TabIndex = 1;
+            this.btnAjudaCookies.TabIndex = 2;
             this.btnAjudaCookies.Text = "?";
             this.btnAjudaCookies.Animated = true;
             this.btnAjudaCookies.Click += new System.EventHandler(this.btnAjudaCookies_Click);
+            //
+            // lblOpcaoArquivoCookies
+            //
+            this.lblOpcaoArquivoCookies.AutoSize = true;
+            this.lblOpcaoArquivoCookies.Font = new System.Drawing.Font("Consolas", 10F);
+            this.lblOpcaoArquivoCookies.ForeColor = CorTextoClaro;
+            this.lblOpcaoArquivoCookies.Location = new System.Drawing.Point(40, 224);
+            this.lblOpcaoArquivoCookies.Name = "lblOpcaoArquivoCookies";
+            this.lblOpcaoArquivoCookies.Size = new System.Drawing.Size(230, 17);
+            this.lblOpcaoArquivoCookies.TabIndex = 3;
+            this.lblOpcaoArquivoCookies.Text = "Usar arquivo cookies.txt";
             //
             // radCookiesArquivo
             //
             this.radCookiesArquivo.CheckedState.BorderColor = CorAcento;
             this.radCookiesArquivo.CheckedState.FillColor = CorAcento;
-            this.radCookiesArquivo.Location = new System.Drawing.Point(40, 122);
+            this.radCookiesArquivo.Location = new System.Drawing.Point(40, 250);
             this.radCookiesArquivo.Name = "radCookiesArquivo";
-            this.radCookiesArquivo.Size = new System.Drawing.Size(36, 36);
-            this.radCookiesArquivo.TabIndex = 2;
+            this.radCookiesArquivo.Size = new System.Drawing.Size(32, 32);
+            this.radCookiesArquivo.TabIndex = 4;
             this.radCookiesArquivo.Text = "";
             this.radCookiesArquivo.CheckedChanged += new System.EventHandler(this.OpcaoDeAutenticacao_CheckedChanged);
             //
             // txtCookiesArquivo
             //
-            this.txtCookiesArquivo.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left | System.Windows.Forms.AnchorStyles.Right)));
+            // Sem botão "Buscar" separado: clicar no campo já abre o seletor de
+            // arquivo (ver txtCookiesArquivo_Click em MainForm.cs), pra manter a
+            // coluna mais limpa.
+            this.txtCookiesArquivo.Cursor = System.Windows.Forms.Cursors.Hand;
             this.txtCookiesArquivo.Enabled = false;
-            this.txtCookiesArquivo.Location = new System.Drawing.Point(90, 120);
+            this.txtCookiesArquivo.Location = new System.Drawing.Point(82, 250);
             this.txtCookiesArquivo.Name = "txtCookiesArquivo";
+            this.txtCookiesArquivo.PlaceholderText = "Toque para escolher o arquivo...";
             this.txtCookiesArquivo.ReadOnly = true;
-            this.txtCookiesArquivo.PlaceholderText = "Nenhum arquivo selecionado — clique em \"Buscar\" ou toque em \"?\" para ajuda";
-            this.txtCookiesArquivo.Size = new System.Drawing.Size(500, 40);
-            this.txtCookiesArquivo.TabIndex = 3;
-            this.EstilizarCampoTexto(this.txtCookiesArquivo, 18);
+            this.txtCookiesArquivo.Size = new System.Drawing.Size(248, 34);
+            this.txtCookiesArquivo.TabIndex = 5;
+            this.EstilizarCampoTexto(this.txtCookiesArquivo, 17);
+            this.txtCookiesArquivo.Click += new System.EventHandler(this.txtCookiesArquivo_Click);
             //
-            // btnSelecionarCookies
+            // lblOpcaoNavegadorCookies
             //
-            this.btnSelecionarCookies.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
-            this.btnSelecionarCookies.Enabled = false;
-            this.btnSelecionarCookies.Location = new System.Drawing.Point(600, 120);
-            this.btnSelecionarCookies.Name = "btnSelecionarCookies";
-            this.btnSelecionarCookies.Size = new System.Drawing.Size(90, 40);
-            this.btnSelecionarCookies.TabIndex = 4;
-            this.btnSelecionarCookies.Text = "Buscar";
-            this.EstilizarBotaoPequeno(this.btnSelecionarCookies);
-            this.btnSelecionarCookies.Click += new System.EventHandler(this.btnSelecionarCookies_Click);
-            //
-            // lblCookiesNavegadorTitulo
-            //
-            this.lblCookiesNavegadorTitulo.AutoSize = true;
-            this.lblCookiesNavegadorTitulo.Font = new System.Drawing.Font("Consolas", 11F);
-            this.lblCookiesNavegadorTitulo.ForeColor = CorTextoClaro;
-            this.lblCookiesNavegadorTitulo.Location = new System.Drawing.Point(40, 190);
-            this.lblCookiesNavegadorTitulo.Name = "lblCookiesNavegadorTitulo";
-            this.lblCookiesNavegadorTitulo.Size = new System.Drawing.Size(280, 18);
-            this.lblCookiesNavegadorTitulo.TabIndex = 5;
-            this.lblCookiesNavegadorTitulo.Text = "Usar cookies do navegador";
+            this.lblOpcaoNavegadorCookies.AutoSize = true;
+            this.lblOpcaoNavegadorCookies.Font = new System.Drawing.Font("Consolas", 10F);
+            this.lblOpcaoNavegadorCookies.ForeColor = CorTextoClaro;
+            this.lblOpcaoNavegadorCookies.Location = new System.Drawing.Point(40, 300);
+            this.lblOpcaoNavegadorCookies.Name = "lblOpcaoNavegadorCookies";
+            this.lblOpcaoNavegadorCookies.Size = new System.Drawing.Size(250, 17);
+            this.lblOpcaoNavegadorCookies.TabIndex = 6;
+            this.lblOpcaoNavegadorCookies.Text = "Usar cookies do navegador";
             //
             // radCookiesNavegador
             //
             this.radCookiesNavegador.CheckedState.BorderColor = CorAcento;
             this.radCookiesNavegador.CheckedState.FillColor = CorAcento;
-            this.radCookiesNavegador.Location = new System.Drawing.Point(40, 222);
+            this.radCookiesNavegador.Location = new System.Drawing.Point(40, 326);
             this.radCookiesNavegador.Name = "radCookiesNavegador";
-            this.radCookiesNavegador.Size = new System.Drawing.Size(36, 36);
-            this.radCookiesNavegador.TabIndex = 6;
+            this.radCookiesNavegador.Size = new System.Drawing.Size(32, 32);
+            this.radCookiesNavegador.TabIndex = 7;
             this.radCookiesNavegador.Text = "";
             this.radCookiesNavegador.CheckedChanged += new System.EventHandler(this.OpcaoDeAutenticacao_CheckedChanged);
             //
             // cmbNavegador
             //
             this.cmbNavegador.BackColor = System.Drawing.Color.Transparent;
-            this.cmbNavegador.BorderRadius = 18;
+            this.cmbNavegador.BorderRadius = 17;
             this.cmbNavegador.BorderColor = System.Drawing.Color.Transparent;
             this.cmbNavegador.Enabled = false;
             this.cmbNavegador.FillColor = CorCartao;
@@ -715,20 +730,20 @@ namespace YtDlpGui
             "opera",
             "vivaldi",
             "chromium"});
-            this.cmbNavegador.Location = new System.Drawing.Point(90, 220);
+            this.cmbNavegador.Location = new System.Drawing.Point(82, 326);
             this.cmbNavegador.Name = "cmbNavegador";
-            this.cmbNavegador.Size = new System.Drawing.Size(200, 40);
-            this.cmbNavegador.TabIndex = 7;
+            this.cmbNavegador.Size = new System.Drawing.Size(248, 34);
+            this.cmbNavegador.TabIndex = 8;
             //
             // radSemCookies
             //
             this.radSemCookies.Checked = true;
             this.radSemCookies.CheckedState.BorderColor = CorAcento;
             this.radSemCookies.CheckedState.FillColor = CorAcento;
-            this.radSemCookies.Location = new System.Drawing.Point(40, 290);
+            this.radSemCookies.Location = new System.Drawing.Point(40, 378);
             this.radSemCookies.Name = "radSemCookies";
-            this.radSemCookies.Size = new System.Drawing.Size(36, 36);
-            this.radSemCookies.TabIndex = 8;
+            this.radSemCookies.Size = new System.Drawing.Size(32, 32);
+            this.radSemCookies.TabIndex = 9;
             this.radSemCookies.TabStop = true;
             this.radSemCookies.Text = "";
             this.radSemCookies.CheckedChanged += new System.EventHandler(this.OpcaoDeAutenticacao_CheckedChanged);
@@ -736,59 +751,80 @@ namespace YtDlpGui
             // lblSemCookies
             //
             this.lblSemCookies.AutoSize = true;
-            this.lblSemCookies.Font = new System.Drawing.Font("Consolas", 11F);
+            this.lblSemCookies.Font = new System.Drawing.Font("Consolas", 10F);
             this.lblSemCookies.ForeColor = CorTextoClaro;
-            this.lblSemCookies.Location = new System.Drawing.Point(90, 298);
+            this.lblSemCookies.Location = new System.Drawing.Point(82, 386);
             this.lblSemCookies.Name = "lblSemCookies";
-            this.lblSemCookies.Size = new System.Drawing.Size(180, 18);
-            this.lblSemCookies.TabIndex = 9;
+            this.lblSemCookies.Size = new System.Drawing.Size(160, 17);
+            this.lblSemCookies.TabIndex = 10;
             this.lblSemCookies.Text = "Não usar cookies";
             //
-            // lblPlaylistConfigTitulo
+            // ================ COLUNA DIREITA: PLAYLIST + ATUALIZAÇÃO ================
             //
-            this.lblPlaylistConfigTitulo.AutoSize = true;
-            this.lblPlaylistConfigTitulo.Font = new System.Drawing.Font("Consolas", 11F);
-            this.lblPlaylistConfigTitulo.ForeColor = CorTextoClaro;
-            this.lblPlaylistConfigTitulo.Location = new System.Drawing.Point(40, 360);
-            this.lblPlaylistConfigTitulo.Name = "lblPlaylistConfigTitulo";
-            this.lblPlaylistConfigTitulo.Size = new System.Drawing.Size(180, 18);
-            this.lblPlaylistConfigTitulo.TabIndex = 9;
-            this.lblPlaylistConfigTitulo.Text = "Downloads de playlist";
+            // lblPlaylistTitulo
+            //
+            this.lblPlaylistTitulo.AutoSize = true;
+            this.lblPlaylistTitulo.Font = new System.Drawing.Font("Consolas", 13F, System.Drawing.FontStyle.Bold);
+            this.lblPlaylistTitulo.ForeColor = CorTextoClaro;
+            this.lblPlaylistTitulo.Location = new System.Drawing.Point(390, 190);
+            this.lblPlaylistTitulo.Name = "lblPlaylistTitulo";
+            this.lblPlaylistTitulo.Size = new System.Drawing.Size(260, 22);
+            this.lblPlaylistTitulo.TabIndex = 11;
+            this.lblPlaylistTitulo.Text = "Download de Playlists:";
+            //
+            // lblPlaylistSubtitulo
+            //
+            this.lblPlaylistSubtitulo.AutoSize = true;
+            this.lblPlaylistSubtitulo.Font = new System.Drawing.Font("Consolas", 10F);
+            this.lblPlaylistSubtitulo.ForeColor = CorTextoClaro;
+            this.lblPlaylistSubtitulo.Location = new System.Drawing.Point(390, 224);
+            this.lblPlaylistSubtitulo.Name = "lblPlaylistSubtitulo";
+            this.lblPlaylistSubtitulo.Size = new System.Drawing.Size(220, 17);
+            this.lblPlaylistSubtitulo.TabIndex = 12;
+            this.lblPlaylistSubtitulo.Text = "Escolha como salvá-las";
             //
             // chkOrganizarPlaylist
             //
-            this.chkOrganizarPlaylist.AutoSize = true;
             this.chkOrganizarPlaylist.CheckedState.BorderColor = CorAcento;
             this.chkOrganizarPlaylist.CheckedState.FillColor = CorAcento;
             this.chkOrganizarPlaylist.Font = new System.Drawing.Font("Consolas", 10F);
             this.chkOrganizarPlaylist.ForeColor = CorTextoClaro;
-            this.chkOrganizarPlaylist.Location = new System.Drawing.Point(40, 392);
+            this.chkOrganizarPlaylist.Location = new System.Drawing.Point(390, 250);
             this.chkOrganizarPlaylist.Name = "chkOrganizarPlaylist";
-            this.chkOrganizarPlaylist.Size = new System.Drawing.Size(500, 26);
-            this.chkOrganizarPlaylist.TabIndex = 9;
-            this.chkOrganizarPlaylist.Text = "Organizar cada playlist em uma subpasta própria";
+            this.chkOrganizarPlaylist.Size = new System.Drawing.Size(300, 32);
+            this.chkOrganizarPlaylist.TabIndex = 13;
+            this.chkOrganizarPlaylist.Text = "Organizar em Subpastas";
             //
-            // lblPlaylistConfigDescricao
+            // lblAtualizarTitulo
             //
-            this.lblPlaylistConfigDescricao.AutoSize = true;
-            this.lblPlaylistConfigDescricao.Font = new System.Drawing.Font("Consolas", 8.5F);
-            this.lblPlaylistConfigDescricao.ForeColor = System.Drawing.Color.FromArgb(220, 230, 226);
-            this.lblPlaylistConfigDescricao.Location = new System.Drawing.Point(40, 420);
-            this.lblPlaylistConfigDescricao.MaximumSize = new System.Drawing.Size(650, 0);
-            this.lblPlaylistConfigDescricao.Name = "lblPlaylistConfigDescricao";
-            this.lblPlaylistConfigDescricao.Size = new System.Drawing.Size(600, 15);
-            this.lblPlaylistConfigDescricao.TabIndex = 10;
-            this.lblPlaylistConfigDescricao.Text = "Marcado: 1 item no Histórico por playlist. Desmarcado: 1 item por vídeo.";
+            this.lblAtualizarTitulo.AutoSize = true;
+            this.lblAtualizarTitulo.Font = new System.Drawing.Font("Consolas", 13F, System.Drawing.FontStyle.Bold);
+            this.lblAtualizarTitulo.ForeColor = CorTextoClaro;
+            this.lblAtualizarTitulo.Location = new System.Drawing.Point(390, 320);
+            this.lblAtualizarTitulo.Name = "lblAtualizarTitulo";
+            this.lblAtualizarTitulo.Size = new System.Drawing.Size(200, 22);
+            this.lblAtualizarTitulo.TabIndex = 14;
+            this.lblAtualizarTitulo.Text = "Atualizar yt-dlp:";
+            //
+            // lblAtualizarStatus
+            //
+            this.lblAtualizarStatus.AutoSize = true;
+            this.lblAtualizarStatus.Font = new System.Drawing.Font("Consolas", 10F);
+            this.lblAtualizarStatus.ForeColor = CorTextoClaro;
+            this.lblAtualizarStatus.Location = new System.Drawing.Point(390, 354);
+            this.lblAtualizarStatus.Name = "lblAtualizarStatus";
+            this.lblAtualizarStatus.Size = new System.Drawing.Size(220, 17);
+            this.lblAtualizarStatus.TabIndex = 15;
+            this.lblAtualizarStatus.Text = "Verifique se há atualizações";
             //
             // btnAtualizarYtDlp
             //
-            this.btnAtualizarYtDlp.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
-            this.btnAtualizarYtDlp.Location = new System.Drawing.Point(40, 470);
+            this.btnAtualizarYtDlp.Location = new System.Drawing.Point(390, 382);
             this.btnAtualizarYtDlp.Name = "btnAtualizarYtDlp";
-            this.btnAtualizarYtDlp.Size = new System.Drawing.Size(200, 40);
-            this.btnAtualizarYtDlp.TabIndex = 10;
+            this.btnAtualizarYtDlp.Size = new System.Drawing.Size(300, 60);
+            this.btnAtualizarYtDlp.TabIndex = 16;
             this.btnAtualizarYtDlp.Text = "Atualizar yt-dlp";
-            this.EstilizarBotaoPequeno(this.btnAtualizarYtDlp);
+            this.EstilizarBotaoPill(this.btnAtualizarYtDlp);
             this.btnAtualizarYtDlp.Click += new System.EventHandler(this.btnAtualizarYtDlp_Click);
 
             // =================================================================
@@ -867,6 +903,7 @@ namespace YtDlpGui
             ((System.ComponentModel.ISupportInitialize)(this.picNavConfig)).EndInit();
             ((System.ComponentModel.ISupportInitialize)(this.picLogoGrande)).EndInit();
             ((System.ComponentModel.ISupportInitialize)(this.picIlustracaoPasta)).EndInit();
+            ((System.ComponentModel.ISupportInitialize)(this.picLogoConfig)).EndInit();
             this.menuHistorico.ResumeLayout(false);
             this.ResumeLayout(false);
         }

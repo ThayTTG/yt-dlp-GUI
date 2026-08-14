@@ -1,0 +1,8 @@
+{
+  "_leiaMe": "Este é só um EXEMPLO. Para ativar o filtro, copie este arquivo para 'filtro-conteudo.json' (na mesma pasta do YtDlpGui.exe) e ajuste os valores abaixo. Veja o README.md, seção 'Filtro de conteúdo (opcional)', para o passo a passo completo — incluindo como gerar o HashCodigoMestre.",
+
+  "habilitado": true,
+  "dominiosPermitidos": [ "youtube.com", "youtu.be" ],
+  "bloquearRestricaoDeIdade": true,
+  "hashCodigoMestre": "COLOQUE_AQUI_O_HASH_SHA256_DO_SEU_CODIGO"
+}

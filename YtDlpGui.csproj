@@ -37,6 +37,15 @@
     <None Include="Assets\**\*.png">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
+    <!--
+      Módulo opcional de Filtro de Conteúdo (ver FiltroConteudo.cs).
+      Isto é só o ARQUIVO DE EXEMPLO — copiá-lo para a saída não ativa nada.
+      Para ativar de fato, copie/renomeie para "filtro-conteudo.json" na
+      pasta do .exe. Veja o README.md, seção "Filtro de conteúdo (opcional)".
+    -->
+    <None Include="filtro-conteudo.exemplo.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
   </ItemGroup>
 
   <ItemGroup>
