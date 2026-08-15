@@ -1,8 +1,13 @@
 using System;
 using System.Diagnostics;
+using System.Drawing;
 using System.IO;
+using System.Net.Http;
 using System.Text;
+using System.Text.Json;
 using System.Text.RegularExpressions;
+using System.Threading;
+using System.Threading.Tasks;
 using System.Windows.Forms;
 using Guna.UI2.WinForms;
 
@@ -31,6 +36,13 @@ namespace YtDlpGui
         private int _totalItensPlaylist;
         private string? _ultimoErro;
         private bool _avisoBotMostrado;
+
+        // Campos da prévia de vídeo (Home)
+        private System.Threading.CancellationTokenSource? _ctsPreviaCts;
+        private readonly System.Net.Http.HttpClient _httpClient = new();
+        private System.Windows.Forms.Timer? _timerSpinner;
+        private int _spinnerFrame;
+        private static readonly string[] SpinnerFrames = { "⠋", "⠙", "⠸", "⠴", "⠦", "⠇" };
 
         private static readonly Regex RegexProgresso =
             new Regex(@"\[download\]\s+(\d{1,3}(?:\.\d+)?)%", RegexOptions.Compiled);
@@ -105,14 +117,177 @@ namespace YtDlpGui
         private void CarregarImagens()
         {
             picLogo.Image = CarregarImagem("logo_transparente.png");
-            picLogoGrande.Image = CarregarImagem("logo_home_grande.png");
+            picLogoGrande.Image = CarregarImagem("logo_icone.png");
             picIlustracaoPasta.Image = CarregarImagem("ilustracao_pasta.png");
-            picLogoConfig.Image = CarregarImagem("logo_home_grande.png");
+            picLogoConfig.Image = CarregarImagem("logo_icone.png");
 
             AtualizarIconesDeNavegacao("home");
         }
 
-        /// <summary>Troca os ícones da barra lateral entre azul (ativo) e branco (inativo).</summary>
+        // ---------------------------------------------------------------
+        // Prévia de vídeo (Home)
+        // ---------------------------------------------------------------
+
+        /// <summary>
+        /// Disparado pelo evento TextChanged do campo de URL (debounced via
+        /// cancellation: só roda de fato se o usuário parar de digitar por
+        /// 600ms, evitando chamadas ao yt-dlp a cada tecla).
+        /// </summary>
+        private async void txtUrl_TextChanged(object sender, EventArgs e)
+        {
+            // Cancela qualquer busca anterior ainda em andamento
+            _ctsPreviaCts?.Cancel();
+            _ctsPreviaCts = new CancellationTokenSource();
+            var token = _ctsPreviaCts.Token;
+
+            string url = txtUrl.Text.Trim();
+
+            if (string.IsNullOrWhiteSpace(url) || !Uri.TryCreate(url, UriKind.Absolute, out _))
+            {
+                MostrarLogoPadrao();
+                return;
+            }
+
+            // Debounce: aguarda 600ms antes de consultar o yt-dlp
+            try { await Task.Delay(600, token); }
+            catch (TaskCanceledException) { return; }
+
+            if (token.IsCancellationRequested) return;
+
+            IniciarSpinner();
+
+            try
+            {
+                var previa = await BuscarPreviaAsync(url, token);
+                if (token.IsCancellationRequested) return;
+
+                if (previa is not null)
+                    ExibirPrevia(previa, token);
+                else
+                    MostrarLogoPadrao();
+            }
+            catch (TaskCanceledException) { }
+            catch { MostrarLogoPadrao(); }
+            finally { PararSpinner(); }
+        }
+
+        /// <summary>
+        /// Roda yt-dlp --dump-json (sem baixar) e extrai título, canal e
+        /// URL da thumbnail do vídeo.
+        /// </summary>
+        private async Task<PreviaVideo?> BuscarPreviaAsync(string url, CancellationToken token)
+        {
+            if (!File.Exists(_ytDlpPath)) return null;
+
+            var psi = new ProcessStartInfo
+            {
+                FileName = _ytDlpPath,
+                UseShellExecute = false,
+                CreateNoWindow = true,
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                StandardOutputEncoding = Encoding.UTF8,
+            };
+            psi.ArgumentList.Add("--dump-json");
+            psi.ArgumentList.Add("--no-warnings");
+            psi.ArgumentList.Add("--skip-download");
+            psi.ArgumentList.Add("--no-playlist");
+            psi.ArgumentList.Add(url);
+
+            using var proc = Process.Start(psi);
+            if (proc is null) return null;
+
+            string saida = await proc.StandardOutput.ReadToEndAsync();
+            await proc.WaitForExitAsync(token);
+
+            if (proc.ExitCode != 0 || string.IsNullOrWhiteSpace(saida))
+                return null;
+
+            using var doc = JsonDocument.Parse(saida);
+            var root = doc.RootElement;
+
+            string titulo = root.TryGetProperty("title", out var t) ? t.GetString() ?? "" : "";
+            string canal = root.TryGetProperty("channel", out var c) ? c.GetString() ?? "" : "";
+            string thumbUrl = root.TryGetProperty("thumbnail", out var th) ? th.GetString() ?? "" : "";
+            string duracao = root.TryGetProperty("duration_string", out var d) ? d.GetString() ?? "" : "";
+
+            if (string.IsNullOrEmpty(titulo)) return null;
+
+            Image? thumbImg = null;
+            if (!string.IsNullOrEmpty(thumbUrl))
+            {
+                try
+                {
+                    byte[] bytes = await _httpClient.GetByteArrayAsync(thumbUrl, token);
+                    using var ms = new MemoryStream(bytes);
+                    thumbImg = Image.FromStream(ms);
+                }
+                catch { /* thumbnail é opcional */ }
+            }
+
+            return new PreviaVideo(titulo, canal, duracao, thumbImg);
+        }
+
+        private record PreviaVideo(string Titulo, string Canal, string Duracao, Image? Thumbnail);
+
+        /// <summary>Exibe os dados da prévia no card da Home.</summary>
+        private void ExibirPrevia(PreviaVideo previa, CancellationToken token)
+        {
+            if (token.IsCancellationRequested) return;
+
+            picLogoGrande.Visible = false;
+            pnlPrevia.Visible = true;
+
+            if (previa.Thumbnail is not null)
+                picThumb.Image = previa.Thumbnail;
+
+            lblTituloVideo.Text = previa.Titulo.Length > 60
+                ? previa.Titulo[..57] + "..."
+                : previa.Titulo;
+
+            string info = previa.Canal;
+            if (!string.IsNullOrEmpty(previa.Duracao))
+                info += (info.Length > 0 ? " • " : "") + previa.Duracao;
+
+            lblInfoVideo.Text = info;
+        }
+
+        /// <summary>Volta a exibir o logo padrão e esconde o painel de prévia.</summary>
+        private void MostrarLogoPadrao()
+        {
+            if (InvokeRequired) { BeginInvoke(MostrarLogoPadrao); return; }
+            pnlPrevia.Visible = false;
+            picLogoGrande.Visible = true;
+            picLogoGrande.Image = CarregarImagem("logo_icone.png");
+        }
+
+        private void IniciarSpinner()
+        {
+            if (InvokeRequired) { BeginInvoke(IniciarSpinner); return; }
+            picLogoGrande.Visible = false;
+            pnlPrevia.Visible = false;
+            lblSpinner.Visible = true;
+            _spinnerFrame = 0;
+            _timerSpinner ??= new System.Windows.Forms.Timer { Interval = 100 };
+            _timerSpinner.Tick -= SpinnerTick;
+            _timerSpinner.Tick += SpinnerTick;
+            _timerSpinner.Start();
+        }
+
+        private void PararSpinner()
+        {
+            if (InvokeRequired) { BeginInvoke(PararSpinner); return; }
+            _timerSpinner?.Stop();
+            lblSpinner.Visible = false;
+        }
+
+        private void SpinnerTick(object? sender, EventArgs e)
+        {
+            _spinnerFrame = (_spinnerFrame + 1) % SpinnerFrames.Length;
+            lblSpinner.Text = SpinnerFrames[_spinnerFrame] + " Buscando informações...";
+        }
+
+
         private void AtualizarIconesDeNavegacao(string paginaAtiva)
         {
             picNavHistorico.Image = CarregarImagem(paginaAtiva == "historico" ? "nav_historico_azul.png" : "nav_historico_branco.png");

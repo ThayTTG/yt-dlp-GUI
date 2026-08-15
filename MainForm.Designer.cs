@@ -8,32 +8,69 @@ namespace YtDlpGui
 
         protected override void Dispose(bool disposing)
         {
-            if (disposing && (components != null))
-            {
-                components.Dispose();
-            }
+            if (disposing && (components != null)) components.Dispose();
             base.Dispose(disposing);
         }
 
-        #region Paleta de cores (baseada no mockup: sálvia + menta + azul)
+        #region Paleta
 
-        private static readonly System.Drawing.Color CorFundo = System.Drawing.Color.FromArgb(92, 127, 114);
-        private static readonly System.Drawing.Color CorFundoStatusBar = System.Drawing.Color.FromArgb(78, 110, 98);
-        private static readonly System.Drawing.Color CorSidebar = System.Drawing.Color.FromArgb(143, 206, 187);
-        private static readonly System.Drawing.Color CorCartao = System.Drawing.Color.White;
-        private static readonly System.Drawing.Color CorTextoClaro = System.Drawing.Color.White;
-        private static readonly System.Drawing.Color CorTextoEscuro = System.Drawing.Color.FromArgb(31, 41, 55);
-        private static readonly System.Drawing.Color CorAcento = System.Drawing.Color.FromArgb(47, 125, 232);
-        private static readonly System.Drawing.Color CorAcentoHover = System.Drawing.Color.FromArgb(37, 107, 204);
-        private static readonly System.Drawing.Color CorPerigo = System.Drawing.Color.FromArgb(225, 92, 79);
-        private static readonly System.Drawing.Color CorPerigoHover = System.Drawing.Color.FromArgb(200, 72, 60);
-        private static readonly System.Drawing.Color CorDesabilitadoFundo = System.Drawing.Color.FromArgb(180, 190, 186);
-        private static readonly System.Drawing.Color CorDesabilitadoTexto = System.Drawing.Color.FromArgb(120, 130, 126);
+        private static readonly System.Drawing.Color CorFundo        = System.Drawing.Color.FromArgb(92, 127, 114);
+        private static readonly System.Drawing.Color CorStatusBar     = System.Drawing.Color.FromArgb(78, 110, 98);
+        private static readonly System.Drawing.Color CorSidebar       = System.Drawing.Color.FromArgb(143, 206, 187);
+        private static readonly System.Drawing.Color CorCard          = System.Drawing.Color.White;
+        private static readonly System.Drawing.Color CorTextoClaro    = System.Drawing.Color.White;
+        private static readonly System.Drawing.Color CorTextoEscuro   = System.Drawing.Color.FromArgb(31, 41, 55);
+        private static readonly System.Drawing.Color CorTextoMuted    = System.Drawing.Color.FromArgb(107, 114, 128);
+        private static readonly System.Drawing.Color CorCampo         = System.Drawing.Color.FromArgb(240, 242, 240);
+        private static readonly System.Drawing.Color CorAcento        = System.Drawing.Color.FromArgb(47, 125, 232);
+        private static readonly System.Drawing.Color CorAcentoHover   = System.Drawing.Color.FromArgb(37, 107, 204);
+        private static readonly System.Drawing.Color CorPerigo        = System.Drawing.Color.FromArgb(225, 92, 79);
+        private static readonly System.Drawing.Color CorPerigoHover   = System.Drawing.Color.FromArgb(200, 72, 60);
+        private static readonly System.Drawing.Color CorBotaoDisabled = System.Drawing.Color.FromArgb(210, 215, 212);
+        private static readonly System.Drawing.Color CorTextoDisabled = System.Drawing.Color.FromArgb(150, 158, 154);
 
         #endregion
 
-        #region Estrutura (barra lateral, área de conteúdo, barra de status)
+        #region Helpers de estilo
 
+        private void EstiloTextBox(Guna2TextBox c, int radius = 18)
+        {
+            c.BorderRadius = radius;
+            c.BorderColor = System.Drawing.Color.Transparent;
+            c.FillColor = CorCampo;
+            c.ForeColor = CorTextoEscuro;
+            c.Font = new System.Drawing.Font("Consolas", 10F);
+            c.FocusedState.BorderColor = CorAcento;
+            c.PlaceholderForeColor = System.Drawing.Color.FromArgb(150, 150, 150);
+        }
+
+        private void EstiloPill(Guna2Button c)
+        {
+            c.BorderRadius = 30;
+            c.FillColor = CorSidebar;
+            c.ForeColor = CorTextoEscuro;
+            c.Font = new System.Drawing.Font("Consolas", 12F, System.Drawing.FontStyle.Bold);
+            c.HoverState.FillColor = System.Drawing.Color.FromArgb(120, 190, 168);
+            c.DisabledState.FillColor = CorBotaoDisabled;
+            c.DisabledState.ForeColor = CorTextoDisabled;
+            c.Animated = true;
+        }
+
+        private void EstiloSecundario(Guna2Button c)
+        {
+            c.BorderRadius = 16;
+            c.FillColor = CorSidebar;
+            c.ForeColor = CorTextoEscuro;
+            c.Font = new System.Drawing.Font("Consolas", 9F);
+            c.HoverState.FillColor = System.Drawing.Color.FromArgb(120, 190, 168);
+            c.DisabledState.FillColor = CorBotaoDisabled;
+            c.DisabledState.ForeColor = CorTextoDisabled;
+            c.Animated = true;
+        }
+
+        #endregion
+
+        // ---- Estrutura ----
         private System.Windows.Forms.Panel pnlSidebar;
         private System.Windows.Forms.PictureBox picLogo;
         private System.Windows.Forms.PictureBox picNavHistorico;
@@ -47,28 +84,32 @@ namespace YtDlpGui
         private System.Windows.Forms.Label lblStatus;
         private Guna2ProgressBar progressBar1;
         private System.Windows.Forms.Label lblProgressPercent;
-
         private System.Windows.Forms.NotifyIcon notifyIcon1;
 
-        #endregion
-
-        #region Página Home
-
+        // ---- Home ----
         private System.Windows.Forms.Panel pnlHome;
-        private System.Windows.Forms.PictureBox picLogoGrande;
-        private System.Windows.Forms.Label lblUrl;
+        private Guna2Panel cardHome;
+        private System.Windows.Forms.Label lblTituloCardHome;
+        private System.Windows.Forms.Label lblSubtituloCardHome;
+        private System.Windows.Forms.Label lblUrlLabel;
         private Guna2TextBox txtUrl;
+        // Área de ilustração / prévia
+        private System.Windows.Forms.PictureBox picLogoGrande;
+        private System.Windows.Forms.Label lblSpinner;
+        private System.Windows.Forms.Panel pnlPrevia;
+        private System.Windows.Forms.PictureBox picThumb;
+        private System.Windows.Forms.Label lblTituloVideo;
+        private System.Windows.Forms.Label lblInfoVideo;
+        // Botões e toggle
         private Guna2Button btnDownloadMp4;
         private Guna2Button btnDownloadMp3;
         private Guna2CheckBox chkPlaylist;
 
-        #endregion
-
-        #region Página Histórico
-
+        // ---- Histórico ----
         private System.Windows.Forms.Panel pnlHistorico;
-        private System.Windows.Forms.Label lblTituloHistorico;
-        private Guna2Panel pnlCardHistorico;
+        private Guna2Panel cardHistorico;
+        private System.Windows.Forms.Label lblTituloCardHistorico;
+        private Guna2Panel pnlCardListaHistorico;
         private System.Windows.Forms.ListView listViewHistorico;
         private System.Windows.Forms.ColumnHeader colTipo;
         private System.Windows.Forms.ColumnHeader colNome;
@@ -78,24 +119,21 @@ namespace YtDlpGui
         private Guna2Button btnLimparHistorico;
         private System.Windows.Forms.Label lblHistoricoVazio;
 
-        #endregion
-
-        #region Página Pasta (local de salvamento)
-
+        // ---- Pasta ----
         private System.Windows.Forms.Panel pnlPasta;
+        private Guna2Panel cardPasta;
+        private System.Windows.Forms.Label lblTituloCardPasta;
         private System.Windows.Forms.PictureBox picIlustracaoPasta;
-        private System.Windows.Forms.Label lblLocalTitulo;
+        private System.Windows.Forms.Label lblLocalLabel;
         private Guna2TextBox txtSavePath;
         private Guna2Button btnAlterarLocal;
 
-        #endregion
-
-        #region Página Configurações (2 colunas: cookies | playlist + atualização)
-
+        // ---- Configurações ----
         private System.Windows.Forms.Panel pnlConfiguracoes;
+        private Guna2Panel cardConfig;
+        private System.Windows.Forms.Label lblTituloCardConfig;
         private System.Windows.Forms.PictureBox picLogoConfig;
-
-        // Coluna esquerda — autenticação por cookies
+        // Coluna esquerda (cookies)
         private System.Windows.Forms.Label lblUsoCookiesTitulo;
         private Guna2Button btnAjudaCookies;
         private System.Windows.Forms.Label lblOpcaoArquivoCookies;
@@ -106,8 +144,7 @@ namespace YtDlpGui
         private Guna2ComboBox cmbNavegador;
         private Guna2RadioButton radSemCookies;
         private System.Windows.Forms.Label lblSemCookies;
-
-        // Coluna direita — playlists e atualização do yt-dlp
+        // Coluna direita (playlist + atualização)
         private System.Windows.Forms.Label lblPlaylistTitulo;
         private System.Windows.Forms.Label lblPlaylistSubtitulo;
         private Guna2CheckBox chkOrganizarPlaylist;
@@ -115,51 +152,11 @@ namespace YtDlpGui
         private System.Windows.Forms.Label lblAtualizarStatus;
         private Guna2Button btnAtualizarYtDlp;
 
-        #endregion
-
-        /// <summary>Aplica o estilo padrão de campo de texto (Guna2TextBox).</summary>
-        private void EstilizarCampoTexto(Guna2TextBox campo, int borderRadius = 20)
-        {
-            campo.BorderRadius = borderRadius;
-            campo.BorderColor = System.Drawing.Color.Transparent;
-            campo.FillColor = CorCartao;
-            campo.ForeColor = CorTextoEscuro;
-            campo.Font = new System.Drawing.Font("Consolas", 10F);
-            campo.FocusedState.BorderColor = CorAcento;
-            campo.PlaceholderForeColor = System.Drawing.Color.FromArgb(150, 150, 150);
-        }
-
-        /// <summary>Aplica o estilo padrão de botão "pill" mint (ações principais das páginas).</summary>
-        private void EstilizarBotaoPill(Guna2Button botao)
-        {
-            botao.BorderRadius = 32;
-            botao.FillColor = CorSidebar;
-            botao.ForeColor = CorTextoEscuro;
-            botao.Font = new System.Drawing.Font("Consolas", 12F, System.Drawing.FontStyle.Bold);
-            botao.HoverState.FillColor = System.Drawing.Color.FromArgb(120, 190, 168);
-            botao.DisabledState.FillColor = CorDesabilitadoFundo;
-            botao.DisabledState.ForeColor = CorDesabilitadoTexto;
-            botao.ImageAlign = System.Windows.Forms.HorizontalAlignment.Left;
-            botao.TextAlign = System.Windows.Forms.HorizontalAlignment.Center;
-            botao.Animated = true;
-        }
-
-        /// <summary>Aplica o estilo padrão de botão pequeno (ações secundárias).</summary>
-        private void EstilizarBotaoPequeno(Guna2Button botao)
-        {
-            botao.BorderRadius = 18;
-            botao.FillColor = CorSidebar;
-            botao.ForeColor = CorTextoEscuro;
-            botao.Font = new System.Drawing.Font("Consolas", 9F);
-            botao.HoverState.FillColor = System.Drawing.Color.FromArgb(120, 190, 168);
-            botao.DisabledState.FillColor = CorDesabilitadoFundo;
-            botao.DisabledState.ForeColor = CorDesabilitadoTexto;
-            botao.Animated = true;
-        }
-
         private void InitializeComponent()
         {
             this.components = new System.ComponentModel.Container();
+
+            // ---- instanciar todos ----
             this.pnlSidebar = new System.Windows.Forms.Panel();
             this.picLogo = new System.Windows.Forms.PictureBox();
             this.picNavHistorico = new System.Windows.Forms.PictureBox();
@@ -174,16 +171,25 @@ namespace YtDlpGui
             this.notifyIcon1 = new System.Windows.Forms.NotifyIcon(this.components);
 
             this.pnlHome = new System.Windows.Forms.Panel();
-            this.picLogoGrande = new System.Windows.Forms.PictureBox();
-            this.lblUrl = new System.Windows.Forms.Label();
+            this.cardHome = new Guna2Panel();
+            this.lblTituloCardHome = new System.Windows.Forms.Label();
+            this.lblSubtituloCardHome = new System.Windows.Forms.Label();
+            this.lblUrlLabel = new System.Windows.Forms.Label();
             this.txtUrl = new Guna2TextBox();
+            this.picLogoGrande = new System.Windows.Forms.PictureBox();
+            this.lblSpinner = new System.Windows.Forms.Label();
+            this.pnlPrevia = new System.Windows.Forms.Panel();
+            this.picThumb = new System.Windows.Forms.PictureBox();
+            this.lblTituloVideo = new System.Windows.Forms.Label();
+            this.lblInfoVideo = new System.Windows.Forms.Label();
             this.btnDownloadMp4 = new Guna2Button();
             this.btnDownloadMp3 = new Guna2Button();
             this.chkPlaylist = new Guna2CheckBox();
 
             this.pnlHistorico = new System.Windows.Forms.Panel();
-            this.lblTituloHistorico = new System.Windows.Forms.Label();
-            this.pnlCardHistorico = new Guna2Panel();
+            this.cardHistorico = new Guna2Panel();
+            this.lblTituloCardHistorico = new System.Windows.Forms.Label();
+            this.pnlCardListaHistorico = new Guna2Panel();
             this.listViewHistorico = new System.Windows.Forms.ListView();
             this.colTipo = new System.Windows.Forms.ColumnHeader();
             this.colNome = new System.Windows.Forms.ColumnHeader();
@@ -194,12 +200,16 @@ namespace YtDlpGui
             this.lblHistoricoVazio = new System.Windows.Forms.Label();
 
             this.pnlPasta = new System.Windows.Forms.Panel();
+            this.cardPasta = new Guna2Panel();
+            this.lblTituloCardPasta = new System.Windows.Forms.Label();
             this.picIlustracaoPasta = new System.Windows.Forms.PictureBox();
-            this.lblLocalTitulo = new System.Windows.Forms.Label();
+            this.lblLocalLabel = new System.Windows.Forms.Label();
             this.txtSavePath = new Guna2TextBox();
             this.btnAlterarLocal = new Guna2Button();
 
             this.pnlConfiguracoes = new System.Windows.Forms.Panel();
+            this.cardConfig = new Guna2Panel();
+            this.lblTituloCardConfig = new System.Windows.Forms.Label();
             this.picLogoConfig = new System.Windows.Forms.PictureBox();
             this.lblUsoCookiesTitulo = new System.Windows.Forms.Label();
             this.btnAjudaCookies = new Guna2Button();
@@ -218,102 +228,64 @@ namespace YtDlpGui
             this.lblAtualizarStatus = new System.Windows.Forms.Label();
             this.btnAtualizarYtDlp = new Guna2Button();
 
-            ((System.ComponentModel.ISupportInitialize)(this.picLogo)).BeginInit();
-            ((System.ComponentModel.ISupportInitialize)(this.picNavHistorico)).BeginInit();
-            ((System.ComponentModel.ISupportInitialize)(this.picNavPasta)).BeginInit();
-            ((System.ComponentModel.ISupportInitialize)(this.picNavConfig)).BeginInit();
-            ((System.ComponentModel.ISupportInitialize)(this.picLogoGrande)).BeginInit();
-            ((System.ComponentModel.ISupportInitialize)(this.picIlustracaoPasta)).BeginInit();
-            ((System.ComponentModel.ISupportInitialize)(this.picLogoConfig)).BeginInit();
+            foreach (var pb in new System.Windows.Forms.PictureBox[]
+                { picLogo, picNavHistorico, picNavPasta, picNavConfig,
+                  picLogoGrande, picIlustracaoPasta, picLogoConfig, picThumb })
+                ((System.ComponentModel.ISupportInitialize)pb).BeginInit();
             this.menuHistorico.SuspendLayout();
             this.SuspendLayout();
 
-            // =================================================================
-            // pnlSidebar
-            // =================================================================
-            this.pnlSidebar.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
+            // ==============================================================
+            // SIDEBAR
+            // ==============================================================
             this.pnlSidebar.BackColor = CorSidebar;
-            this.pnlSidebar.Location = new System.Drawing.Point(0, 0);
+            this.pnlSidebar.Dock = System.Windows.Forms.DockStyle.Left;
+            this.pnlSidebar.Width = 90;
             this.pnlSidebar.Name = "pnlSidebar";
-            this.pnlSidebar.Size = new System.Drawing.Size(90, 640);
-            this.pnlSidebar.TabIndex = 0;
-            this.pnlSidebar.Controls.Add(this.picLogo);
-            this.pnlSidebar.Controls.Add(this.picNavHistorico);
-            this.pnlSidebar.Controls.Add(this.picNavPasta);
-            this.pnlSidebar.Controls.Add(this.picNavConfig);
-            //
-            // picLogo (clique = voltar para a Home)
-            //
+            this.pnlSidebar.Controls.AddRange(new System.Windows.Forms.Control[]
+                { picLogo, picNavHistorico, picNavPasta, picNavConfig });
+
             this.picLogo.BackColor = System.Drawing.Color.Transparent;
             this.picLogo.Cursor = System.Windows.Forms.Cursors.Hand;
             this.picLogo.Location = new System.Drawing.Point(13, 13);
-            this.picLogo.Name = "picLogo";
             this.picLogo.Size = new System.Drawing.Size(64, 64);
             this.picLogo.SizeMode = System.Windows.Forms.PictureBoxSizeMode.Zoom;
-            this.picLogo.TabIndex = 0;
-            this.picLogo.TabStop = false;
             this.picLogo.Click += new System.EventHandler(this.picLogo_Click);
-            //
-            // picNavHistorico
-            //
-            this.picNavHistorico.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
-            this.picNavHistorico.BackColor = System.Drawing.Color.Transparent;
-            this.picNavHistorico.Cursor = System.Windows.Forms.Cursors.Hand;
-            this.picNavHistorico.Location = new System.Drawing.Point(21, 448);
-            this.picNavHistorico.Name = "picNavHistorico";
-            this.picNavHistorico.Size = new System.Drawing.Size(48, 48);
-            this.picNavHistorico.SizeMode = System.Windows.Forms.PictureBoxSizeMode.Zoom;
-            this.picNavHistorico.TabIndex = 1;
-            this.picNavHistorico.TabStop = false;
+
+            foreach (var (pb, y, name) in new[]
+            {
+                (picNavHistorico, 448, "picNavHistorico"),
+                (picNavPasta,     512, "picNavPasta"),
+                (picNavConfig,    576, "picNavConfig"),
+            })
+            {
+                pb.Anchor = System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left;
+                pb.BackColor = System.Drawing.Color.Transparent;
+                pb.Cursor = System.Windows.Forms.Cursors.Hand;
+                pb.Location = new System.Drawing.Point(21, y);
+                pb.Size = new System.Drawing.Size(48, 48);
+                pb.SizeMode = System.Windows.Forms.PictureBoxSizeMode.Zoom;
+                pb.Name = name;
+            }
             this.picNavHistorico.Click += new System.EventHandler(this.picNavHistorico_Click);
-            //
-            // picNavPasta
-            //
-            this.picNavPasta.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
-            this.picNavPasta.BackColor = System.Drawing.Color.Transparent;
-            this.picNavPasta.Cursor = System.Windows.Forms.Cursors.Hand;
-            this.picNavPasta.Location = new System.Drawing.Point(21, 512);
-            this.picNavPasta.Name = "picNavPasta";
-            this.picNavPasta.Size = new System.Drawing.Size(48, 48);
-            this.picNavPasta.SizeMode = System.Windows.Forms.PictureBoxSizeMode.Zoom;
-            this.picNavPasta.TabIndex = 2;
-            this.picNavPasta.TabStop = false;
             this.picNavPasta.Click += new System.EventHandler(this.picNavPasta_Click);
-            //
-            // picNavConfig
-            //
-            this.picNavConfig.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
-            this.picNavConfig.BackColor = System.Drawing.Color.Transparent;
-            this.picNavConfig.Cursor = System.Windows.Forms.Cursors.Hand;
-            this.picNavConfig.Location = new System.Drawing.Point(21, 576);
-            this.picNavConfig.Name = "picNavConfig";
-            this.picNavConfig.Size = new System.Drawing.Size(48, 48);
-            this.picNavConfig.SizeMode = System.Windows.Forms.PictureBoxSizeMode.Zoom;
-            this.picNavConfig.TabIndex = 3;
-            this.picNavConfig.TabStop = false;
             this.picNavConfig.Click += new System.EventHandler(this.picNavConfig_Click);
 
-            // =================================================================
-            // pnlContent (área central, troca de "página" conforme navegação)
-            // =================================================================
-            this.pnlContent.Anchor = ((System.Windows.Forms.AnchorStyles)((((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom)
-                        | System.Windows.Forms.AnchorStyles.Left)
-                        | System.Windows.Forms.AnchorStyles.Right)));
-            this.pnlContent.BackColor = CorFundo;
+            // ==============================================================
+            // CONTENT AREA
+            // ==============================================================
             this.pnlContent.Location = new System.Drawing.Point(90, 0);
-            this.pnlContent.Name = "pnlContent";
             this.pnlContent.Size = new System.Drawing.Size(730, 550);
-            this.pnlContent.TabIndex = 1;
-            this.pnlContent.Controls.Add(this.pnlConfiguracoes);
-            this.pnlContent.Controls.Add(this.pnlPasta);
-            this.pnlContent.Controls.Add(this.pnlHistorico);
-            this.pnlContent.Controls.Add(this.pnlHome);
-            this.pnlContent.Controls.Add(this.btnCancelar);
-            this.btnCancelar.BringToFront();
-            //
-            // btnCancelar (círculo vermelho "X", flutuante no canto inferior direito)
-            //
-            this.btnCancelar.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Right)));
+            this.pnlContent.Anchor = ((System.Windows.Forms.AnchorStyles)
+                (System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom |
+                 System.Windows.Forms.AnchorStyles.Left | System.Windows.Forms.AnchorStyles.Right));
+            this.pnlContent.BackColor = CorFundo;
+            this.pnlContent.Name = "pnlContent";
+            this.pnlContent.Controls.AddRange(new System.Windows.Forms.Control[]
+                { pnlConfiguracoes, pnlPasta, pnlHistorico, pnlHome, btnCancelar });
+
+            // Botão cancelar — círculo vermelho flutuante, sempre na frente
+            this.btnCancelar.Anchor = System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Right;
             this.btnCancelar.BorderRadius = 28;
             this.btnCancelar.Enabled = false;
             this.btnCancelar.FillColor = CorPerigo;
@@ -323,587 +295,483 @@ namespace YtDlpGui
             this.btnCancelar.DisabledState.FillColor = System.Drawing.Color.FromArgb(190, 150, 145);
             this.btnCancelar.DisabledState.ForeColor = System.Drawing.Color.FromArgb(230, 210, 208);
             this.btnCancelar.Location = new System.Drawing.Point(654, 474);
-            this.btnCancelar.Name = "btnCancelar";
             this.btnCancelar.Size = new System.Drawing.Size(56, 56);
-            this.btnCancelar.TabIndex = 20;
             this.btnCancelar.Text = "X";
             this.btnCancelar.Animated = true;
             this.btnCancelar.Click += new System.EventHandler(this.btnCancelar_Click);
+            this.btnCancelar.BringToFront();
 
-            // =================================================================
-            // pnlHome
-            // =================================================================
-            this.pnlHome.Anchor = ((System.Windows.Forms.AnchorStyles)((((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom)
-                        | System.Windows.Forms.AnchorStyles.Left)
-                        | System.Windows.Forms.AnchorStyles.Right)));
+            // ==============================================================
+            // HOME — card centralizado com prévia de vídeo
+            // ==============================================================
+            this.pnlHome.Dock = System.Windows.Forms.DockStyle.Fill;
             this.pnlHome.BackColor = System.Drawing.Color.Transparent;
-            this.pnlHome.Location = new System.Drawing.Point(0, 0);
             this.pnlHome.Name = "pnlHome";
-            this.pnlHome.Size = new System.Drawing.Size(730, 550);
-            this.pnlHome.TabIndex = 0;
-            this.pnlHome.Controls.Add(this.chkPlaylist);
-            this.pnlHome.Controls.Add(this.btnDownloadMp3);
-            this.pnlHome.Controls.Add(this.btnDownloadMp4);
-            this.pnlHome.Controls.Add(this.txtUrl);
-            this.pnlHome.Controls.Add(this.lblUrl);
-            this.pnlHome.Controls.Add(this.picLogoGrande);
-            //
-            // picLogoGrande
-            //
-            this.picLogoGrande.Location = new System.Drawing.Point(275, 40);
-            this.picLogoGrande.Name = "picLogoGrande";
-            this.picLogoGrande.Size = new System.Drawing.Size(180, 180);
+            this.pnlHome.Controls.AddRange(new System.Windows.Forms.Control[] { cardHome });
+
+            this.cardHome.Anchor = ((System.Windows.Forms.AnchorStyles)
+                (System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom |
+                 System.Windows.Forms.AnchorStyles.Left | System.Windows.Forms.AnchorStyles.Right));
+            this.cardHome.BorderRadius = 24;
+            this.cardHome.FillColor = CorCard;
+            this.cardHome.Location = new System.Drawing.Point(30, 30);
+            this.cardHome.Size = new System.Drawing.Size(670, 490);
+            this.cardHome.Name = "cardHome";
+            this.cardHome.Controls.AddRange(new System.Windows.Forms.Control[]
+            {
+                lblTituloCardHome, lblSubtituloCardHome,
+                lblUrlLabel, txtUrl,
+                picLogoGrande, lblSpinner, pnlPrevia,
+                btnDownloadMp4, btnDownloadMp3, chkPlaylist
+            });
+
+            this.lblTituloCardHome.AutoSize = true;
+            this.lblTituloCardHome.Font = new System.Drawing.Font("Consolas", 18F, System.Drawing.FontStyle.Bold);
+            this.lblTituloCardHome.ForeColor = CorTextoEscuro;
+            this.lblTituloCardHome.Location = new System.Drawing.Point(30, 26);
+            this.lblTituloCardHome.Text = "Baixar vídeo";
+
+            this.lblSubtituloCardHome.AutoSize = true;
+            this.lblSubtituloCardHome.Font = new System.Drawing.Font("Consolas", 10F);
+            this.lblSubtituloCardHome.ForeColor = CorTextoMuted;
+            this.lblSubtituloCardHome.Location = new System.Drawing.Point(30, 60);
+            this.lblSubtituloCardHome.Text = "Cole o link e escolha o formato";
+
+            this.lblUrlLabel.AutoSize = true;
+            this.lblUrlLabel.Font = new System.Drawing.Font("Consolas", 11F);
+            this.lblUrlLabel.ForeColor = CorTextoEscuro;
+            this.lblUrlLabel.Location = new System.Drawing.Point(30, 98);
+            this.lblUrlLabel.Text = "URL do vídeo:";
+
+            this.txtUrl.Anchor = ((System.Windows.Forms.AnchorStyles)
+                (System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left |
+                 System.Windows.Forms.AnchorStyles.Right));
+            this.txtUrl.Location = new System.Drawing.Point(30, 124);
+            this.txtUrl.Size = new System.Drawing.Size(610, 40);
+            this.txtUrl.PlaceholderText = "https://youtube.com/watch?v=...";
+            this.EstiloTextBox(this.txtUrl, 20);
+            this.txtUrl.TextChanged += new System.EventHandler(this.txtUrl_TextChanged);
+
+            // Logo padrão (visível quando não há URL)
+            this.picLogoGrande.Location = new System.Drawing.Point(245, 178);
+            this.picLogoGrande.Size = new System.Drawing.Size(160, 160);
             this.picLogoGrande.SizeMode = System.Windows.Forms.PictureBoxSizeMode.Zoom;
-            this.picLogoGrande.TabIndex = 0;
-            this.picLogoGrande.TabStop = false;
-            //
-            // lblUrl
-            //
-            this.lblUrl.AutoSize = true;
-            this.lblUrl.Font = new System.Drawing.Font("Consolas", 12F);
-            this.lblUrl.ForeColor = CorTextoClaro;
-            this.lblUrl.Location = new System.Drawing.Point(40, 250);
-            this.lblUrl.Name = "lblUrl";
-            this.lblUrl.Size = new System.Drawing.Size(230, 19);
-            this.lblUrl.TabIndex = 1;
-            this.lblUrl.Text = "URL do Link do Vídeo:";
-            //
-            // txtUrl
-            //
-            this.txtUrl.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left | System.Windows.Forms.AnchorStyles.Right)));
-            this.txtUrl.Location = new System.Drawing.Point(40, 278);
-            this.txtUrl.Name = "txtUrl";
-            this.txtUrl.PlaceholderText = "Cole aqui o link do vídeo do YouTube...";
-            this.txtUrl.Size = new System.Drawing.Size(650, 44);
-            this.txtUrl.TabIndex = 2;
-            this.EstilizarCampoTexto(this.txtUrl, 22);
-            //
-            // btnDownloadMp4
-            //
-            this.btnDownloadMp4.Location = new System.Drawing.Point(40, 340);
-            this.btnDownloadMp4.Name = "btnDownloadMp4";
-            this.btnDownloadMp4.Size = new System.Drawing.Size(310, 64);
-            this.btnDownloadMp4.TabIndex = 3;
+            this.picLogoGrande.BackColor = System.Drawing.Color.Transparent;
+
+            // Spinner de loading
+            this.lblSpinner.AutoSize = true;
+            this.lblSpinner.Font = new System.Drawing.Font("Consolas", 13F);
+            this.lblSpinner.ForeColor = CorTextoMuted;
+            this.lblSpinner.Location = new System.Drawing.Point(140, 234);
+            this.lblSpinner.Text = "⠋ Buscando informações...";
+            this.lblSpinner.Visible = false;
+
+            // Painel de prévia (thumbnail + título + info)
+            this.pnlPrevia.Location = new System.Drawing.Point(30, 178);
+            this.pnlPrevia.Size = new System.Drawing.Size(610, 150);
+            this.pnlPrevia.BackColor = System.Drawing.Color.FromArgb(240, 243, 241);
+            var pnlPreviaRound = this.pnlPrevia;
+            pnlPreviaRound.Visible = false;
+            this.pnlPrevia.Controls.AddRange(new System.Windows.Forms.Control[]
+                { picThumb, lblTituloVideo, lblInfoVideo });
+
+            this.picThumb.BackColor = System.Drawing.Color.FromArgb(200, 206, 203);
+            this.picThumb.Location = new System.Drawing.Point(12, 12);
+            this.picThumb.Size = new System.Drawing.Size(180, 126);
+            this.picThumb.SizeMode = System.Windows.Forms.PictureBoxSizeMode.Zoom;
+
+            this.lblTituloVideo.AutoSize = false;
+            this.lblTituloVideo.Font = new System.Drawing.Font("Consolas", 11F, System.Drawing.FontStyle.Bold);
+            this.lblTituloVideo.ForeColor = CorTextoEscuro;
+            this.lblTituloVideo.Location = new System.Drawing.Point(205, 20);
+            this.lblTituloVideo.Size = new System.Drawing.Size(395, 60);
+            this.lblTituloVideo.Text = "";
+
+            this.lblInfoVideo.AutoSize = true;
+            this.lblInfoVideo.Font = new System.Drawing.Font("Consolas", 10F);
+            this.lblInfoVideo.ForeColor = CorTextoMuted;
+            this.lblInfoVideo.Location = new System.Drawing.Point(205, 88);
+            this.lblInfoVideo.Text = "";
+
+            // Botões de download
+            this.btnDownloadMp4.Location = new System.Drawing.Point(30, 350);
+            this.btnDownloadMp4.Size = new System.Drawing.Size(290, 60);
             this.btnDownloadMp4.Text = "Baixar .MP4";
-            this.EstilizarBotaoPill(this.btnDownloadMp4);
+            this.EstiloPill(this.btnDownloadMp4);
             this.btnDownloadMp4.Click += new System.EventHandler(this.btnDownloadMp4_Click);
-            //
-            // btnDownloadMp3
-            //
-            this.btnDownloadMp3.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
-            this.btnDownloadMp3.Location = new System.Drawing.Point(366, 340);
-            this.btnDownloadMp3.Name = "btnDownloadMp3";
-            this.btnDownloadMp3.Size = new System.Drawing.Size(310, 64);
-            this.btnDownloadMp3.TabIndex = 4;
+
+            this.btnDownloadMp3.Location = new System.Drawing.Point(348, 350);
+            this.btnDownloadMp3.Size = new System.Drawing.Size(290, 60);
             this.btnDownloadMp3.Text = "Baixar .MP3";
-            this.EstilizarBotaoPill(this.btnDownloadMp3);
+            this.EstiloPill(this.btnDownloadMp3);
             this.btnDownloadMp3.Click += new System.EventHandler(this.btnDownloadMp3_Click);
-            //
-            // chkPlaylist
-            //
+
             this.chkPlaylist.AutoSize = true;
             this.chkPlaylist.CheckedState.BorderColor = CorAcento;
             this.chkPlaylist.CheckedState.FillColor = CorAcento;
             this.chkPlaylist.Font = new System.Drawing.Font("Consolas", 11F);
-            this.chkPlaylist.ForeColor = CorTextoClaro;
-            this.chkPlaylist.Location = new System.Drawing.Point(40, 424);
-            this.chkPlaylist.Name = "chkPlaylist";
-            this.chkPlaylist.Size = new System.Drawing.Size(220, 30);
-            this.chkPlaylist.TabIndex = 5;
+            this.chkPlaylist.ForeColor = CorTextoEscuro;
+            this.chkPlaylist.Location = new System.Drawing.Point(30, 430);
             this.chkPlaylist.Text = "Baixar Playlist";
 
-            // =================================================================
-            // pnlHistorico
-            // =================================================================
-            this.pnlHistorico.Anchor = ((System.Windows.Forms.AnchorStyles)((((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom)
-                        | System.Windows.Forms.AnchorStyles.Left)
-                        | System.Windows.Forms.AnchorStyles.Right)));
+            // ==============================================================
+            // HISTÓRICO — card com lista
+            // ==============================================================
+            this.pnlHistorico.Dock = System.Windows.Forms.DockStyle.Fill;
             this.pnlHistorico.BackColor = System.Drawing.Color.Transparent;
-            this.pnlHistorico.Location = new System.Drawing.Point(0, 0);
             this.pnlHistorico.Name = "pnlHistorico";
-            this.pnlHistorico.Size = new System.Drawing.Size(730, 550);
-            this.pnlHistorico.TabIndex = 1;
             this.pnlHistorico.Visible = false;
-            this.pnlHistorico.Controls.Add(this.lblHistoricoVazio);
-            this.pnlHistorico.Controls.Add(this.btnLimparHistorico);
-            this.pnlHistorico.Controls.Add(this.pnlCardHistorico);
-            this.pnlHistorico.Controls.Add(this.lblTituloHistorico);
-            //
-            // lblTituloHistorico
-            //
-            this.lblTituloHistorico.AutoSize = true;
-            this.lblTituloHistorico.Font = new System.Drawing.Font("Consolas", 16F);
-            this.lblTituloHistorico.ForeColor = CorTextoClaro;
-            this.lblTituloHistorico.Location = new System.Drawing.Point(40, 30);
-            this.lblTituloHistorico.Name = "lblTituloHistorico";
-            this.lblTituloHistorico.Size = new System.Drawing.Size(320, 25);
-            this.lblTituloHistorico.TabIndex = 0;
-            this.lblTituloHistorico.Text = "Histórico de Downloads";
-            //
-            // pnlCardHistorico
-            //
-            this.pnlCardHistorico.Anchor = ((System.Windows.Forms.AnchorStyles)((((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom)
-                        | System.Windows.Forms.AnchorStyles.Left)
-                        | System.Windows.Forms.AnchorStyles.Right)));
-            this.pnlCardHistorico.BorderRadius = 16;
-            this.pnlCardHistorico.FillColor = CorCartao;
-            this.pnlCardHistorico.Location = new System.Drawing.Point(40, 90);
-            this.pnlCardHistorico.Name = "pnlCardHistorico";
-            this.pnlCardHistorico.Size = new System.Drawing.Size(650, 380);
-            this.pnlCardHistorico.TabIndex = 1;
-            this.pnlCardHistorico.Controls.Add(this.listViewHistorico);
-            //
-            // listViewHistorico
-            //
-            this.listViewHistorico.BackColor = CorCartao;
+            this.pnlHistorico.Controls.Add(cardHistorico);
+
+            this.cardHistorico.Anchor = ((System.Windows.Forms.AnchorStyles)
+                (System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom |
+                 System.Windows.Forms.AnchorStyles.Left | System.Windows.Forms.AnchorStyles.Right));
+            this.cardHistorico.BorderRadius = 24;
+            this.cardHistorico.FillColor = CorCard;
+            this.cardHistorico.Location = new System.Drawing.Point(30, 30);
+            this.cardHistorico.Size = new System.Drawing.Size(670, 490);
+            this.cardHistorico.Name = "cardHistorico";
+            this.cardHistorico.Controls.AddRange(new System.Windows.Forms.Control[]
+                { lblTituloCardHistorico, pnlCardListaHistorico, btnLimparHistorico, lblHistoricoVazio });
+
+            this.lblTituloCardHistorico.AutoSize = true;
+            this.lblTituloCardHistorico.Font = new System.Drawing.Font("Consolas", 18F, System.Drawing.FontStyle.Bold);
+            this.lblTituloCardHistorico.ForeColor = CorTextoEscuro;
+            this.lblTituloCardHistorico.Location = new System.Drawing.Point(30, 26);
+            this.lblTituloCardHistorico.Text = "Histórico de Downloads";
+
+            this.pnlCardListaHistorico.Anchor = ((System.Windows.Forms.AnchorStyles)
+                (System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom |
+                 System.Windows.Forms.AnchorStyles.Left | System.Windows.Forms.AnchorStyles.Right));
+            this.pnlCardListaHistorico.BorderRadius = 16;
+            this.pnlCardListaHistorico.FillColor = System.Drawing.Color.FromArgb(248, 250, 248);
+            this.pnlCardListaHistorico.Location = new System.Drawing.Point(30, 80);
+            this.pnlCardListaHistorico.Size = new System.Drawing.Size(610, 360);
+            this.pnlCardListaHistorico.Controls.Add(listViewHistorico);
+
+            this.listViewHistorico.BackColor = System.Drawing.Color.FromArgb(248, 250, 248);
             this.listViewHistorico.BorderStyle = System.Windows.Forms.BorderStyle.None;
-            this.listViewHistorico.Columns.AddRange(new System.Windows.Forms.ColumnHeader[] {
-            this.colTipo,
-            this.colNome,
-            this.colData});
-            this.listViewHistorico.ContextMenuStrip = this.menuHistorico;
             this.listViewHistorico.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.listViewHistorico.Font = new System.Drawing.Font("Consolas", 9.5F);
+            this.listViewHistorico.Font = new System.Drawing.Font("Consolas", 10F);
             this.listViewHistorico.ForeColor = CorTextoEscuro;
             this.listViewHistorico.FullRowSelect = true;
             this.listViewHistorico.GridLines = false;
             this.listViewHistorico.HideSelection = false;
-            this.listViewHistorico.Location = new System.Drawing.Point(0, 0);
             this.listViewHistorico.MultiSelect = false;
-            this.listViewHistorico.Name = "listViewHistorico";
-            this.listViewHistorico.Padding = new System.Windows.Forms.Padding(12);
-            this.listViewHistorico.Size = new System.Drawing.Size(650, 380);
-            this.listViewHistorico.TabIndex = 0;
-            this.listViewHistorico.UseCompatibleStateImageBehavior = false;
             this.listViewHistorico.View = System.Windows.Forms.View.Details;
+            this.listViewHistorico.UseCompatibleStateImageBehavior = false;
+            this.listViewHistorico.ContextMenuStrip = menuHistorico;
+            this.listViewHistorico.Columns.AddRange(new System.Windows.Forms.ColumnHeader[]
+                { colTipo, colNome, colData });
             this.listViewHistorico.DoubleClick += new System.EventHandler(this.menuItemAbrirPasta_Click);
-            //
-            // colTipo
-            //
-            this.colTipo.Text = "Tipo";
-            this.colTipo.Width = 80;
-            //
-            // colNome
-            //
-            this.colNome.Text = "Nome";
-            this.colNome.Width = 380;
-            //
-            // colData
-            //
-            this.colData.Text = "Data";
-            this.colData.Width = 160;
-            //
-            // menuHistorico
-            //
-            this.menuHistorico.Items.AddRange(new System.Windows.Forms.ToolStripItem[] {
-            this.menuItemAbrirPasta});
-            this.menuHistorico.Name = "menuHistorico";
-            this.menuHistorico.Size = new System.Drawing.Size(180, 26);
-            //
-            // menuItemAbrirPasta
-            //
-            this.menuItemAbrirPasta.Name = "menuItemAbrirPasta";
+            this.colTipo.Text = "Tipo"; this.colTipo.Width = 70;
+            this.colNome.Text = "Nome"; this.colNome.Width = 350;
+            this.colData.Text = "Data";  this.colData.Width = 160;
+
+            this.menuHistorico.Items.Add(this.menuItemAbrirPasta);
             this.menuItemAbrirPasta.Text = "Abrir pasta do item";
             this.menuItemAbrirPasta.Click += new System.EventHandler(this.menuItemAbrirPasta_Click);
-            //
-            // lblHistoricoVazio
-            //
+
             this.lblHistoricoVazio.AutoSize = true;
-            this.lblHistoricoVazio.Font = new System.Drawing.Font("Consolas", 9.5F);
-            this.lblHistoricoVazio.ForeColor = CorTextoEscuro;
-            this.lblHistoricoVazio.Location = new System.Drawing.Point(60, 118);
-            this.lblHistoricoVazio.Name = "lblHistoricoVazio";
-            this.lblHistoricoVazio.Size = new System.Drawing.Size(260, 19);
-            this.lblHistoricoVazio.TabIndex = 2;
+            this.lblHistoricoVazio.Font = new System.Drawing.Font("Consolas", 10F);
+            this.lblHistoricoVazio.ForeColor = CorTextoMuted;
+            this.lblHistoricoVazio.Location = new System.Drawing.Point(50, 106);
             this.lblHistoricoVazio.Text = "Nenhum download foi registrado ainda.";
             this.lblHistoricoVazio.Visible = false;
-            //
-            // btnLimparHistorico
-            //
-            this.btnLimparHistorico.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
-            this.btnLimparHistorico.Location = new System.Drawing.Point(40, 480);
-            this.btnLimparHistorico.Name = "btnLimparHistorico";
-            this.btnLimparHistorico.Size = new System.Drawing.Size(150, 36);
-            this.btnLimparHistorico.TabIndex = 3;
+
+            this.btnLimparHistorico.Anchor = System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left;
+            this.btnLimparHistorico.Location = new System.Drawing.Point(30, 452);
+            this.btnLimparHistorico.Size = new System.Drawing.Size(160, 36);
             this.btnLimparHistorico.Text = "Limpar Histórico";
-            this.EstilizarBotaoPequeno(this.btnLimparHistorico);
+            this.EstiloSecundario(this.btnLimparHistorico);
             this.btnLimparHistorico.Click += new System.EventHandler(this.btnLimparHistorico_Click);
 
-            // =================================================================
-            // pnlPasta
-            // =================================================================
-            this.pnlPasta.Anchor = ((System.Windows.Forms.AnchorStyles)((((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom)
-                        | System.Windows.Forms.AnchorStyles.Left)
-                        | System.Windows.Forms.AnchorStyles.Right)));
+            // ==============================================================
+            // PASTA — card com campo de salvamento
+            // ==============================================================
+            this.pnlPasta.Dock = System.Windows.Forms.DockStyle.Fill;
             this.pnlPasta.BackColor = System.Drawing.Color.Transparent;
-            this.pnlPasta.Location = new System.Drawing.Point(0, 0);
             this.pnlPasta.Name = "pnlPasta";
-            this.pnlPasta.Size = new System.Drawing.Size(730, 550);
-            this.pnlPasta.TabIndex = 2;
             this.pnlPasta.Visible = false;
-            this.pnlPasta.Controls.Add(this.btnAlterarLocal);
-            this.pnlPasta.Controls.Add(this.txtSavePath);
-            this.pnlPasta.Controls.Add(this.lblLocalTitulo);
-            this.pnlPasta.Controls.Add(this.picIlustracaoPasta);
-            //
-            // picIlustracaoPasta
-            //
-            this.picIlustracaoPasta.Location = new System.Drawing.Point(275, 40);
-            this.picIlustracaoPasta.Name = "picIlustracaoPasta";
-            this.picIlustracaoPasta.Size = new System.Drawing.Size(180, 180);
+            this.pnlPasta.Controls.Add(cardPasta);
+
+            this.cardPasta.Anchor = ((System.Windows.Forms.AnchorStyles)
+                (System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom |
+                 System.Windows.Forms.AnchorStyles.Left | System.Windows.Forms.AnchorStyles.Right));
+            this.cardPasta.BorderRadius = 24;
+            this.cardPasta.FillColor = CorCard;
+            this.cardPasta.Location = new System.Drawing.Point(30, 30);
+            this.cardPasta.Size = new System.Drawing.Size(670, 490);
+            this.cardPasta.Name = "cardPasta";
+            this.cardPasta.Controls.AddRange(new System.Windows.Forms.Control[]
+                { lblTituloCardPasta, picIlustracaoPasta, lblLocalLabel, txtSavePath, btnAlterarLocal });
+
+            this.lblTituloCardPasta.AutoSize = true;
+            this.lblTituloCardPasta.Font = new System.Drawing.Font("Consolas", 18F, System.Drawing.FontStyle.Bold);
+            this.lblTituloCardPasta.ForeColor = CorTextoEscuro;
+            this.lblTituloCardPasta.Location = new System.Drawing.Point(30, 26);
+            this.lblTituloCardPasta.Text = "Local de salvamento";
+
+            this.picIlustracaoPasta.Location = new System.Drawing.Point(240, 90);
+            this.picIlustracaoPasta.Size = new System.Drawing.Size(190, 190);
             this.picIlustracaoPasta.SizeMode = System.Windows.Forms.PictureBoxSizeMode.Zoom;
-            this.picIlustracaoPasta.TabIndex = 0;
-            this.picIlustracaoPasta.TabStop = false;
-            //
-            // lblLocalTitulo
-            //
-            this.lblLocalTitulo.AutoSize = true;
-            this.lblLocalTitulo.Font = new System.Drawing.Font("Consolas", 12F);
-            this.lblLocalTitulo.ForeColor = CorTextoClaro;
-            this.lblLocalTitulo.Location = new System.Drawing.Point(40, 250);
-            this.lblLocalTitulo.Name = "lblLocalTitulo";
-            this.lblLocalTitulo.Size = new System.Drawing.Size(210, 19);
-            this.lblLocalTitulo.TabIndex = 1;
-            this.lblLocalTitulo.Text = "Local de Salvamento:";
-            //
-            // txtSavePath
-            //
-            this.txtSavePath.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left | System.Windows.Forms.AnchorStyles.Right)));
-            this.txtSavePath.Location = new System.Drawing.Point(40, 278);
-            this.txtSavePath.Name = "txtSavePath";
+            this.picIlustracaoPasta.BackColor = System.Drawing.Color.Transparent;
+
+            this.lblLocalLabel.AutoSize = true;
+            this.lblLocalLabel.Font = new System.Drawing.Font("Consolas", 11F);
+            this.lblLocalLabel.ForeColor = CorTextoEscuro;
+            this.lblLocalLabel.Location = new System.Drawing.Point(30, 300);
+            this.lblLocalLabel.Text = "Local de Salvamento:";
+
+            this.txtSavePath.Anchor = ((System.Windows.Forms.AnchorStyles)
+                (System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left |
+                 System.Windows.Forms.AnchorStyles.Right));
+            this.txtSavePath.Location = new System.Drawing.Point(30, 328);
+            this.txtSavePath.Size = new System.Drawing.Size(610, 40);
             this.txtSavePath.ReadOnly = true;
-            this.txtSavePath.Size = new System.Drawing.Size(650, 44);
-            this.txtSavePath.TabIndex = 2;
-            this.EstilizarCampoTexto(this.txtSavePath, 22);
-            //
-            // btnAlterarLocal
-            //
-            this.btnAlterarLocal.Location = new System.Drawing.Point(213, 340);
-            this.btnAlterarLocal.Name = "btnAlterarLocal";
-            this.btnAlterarLocal.Size = new System.Drawing.Size(304, 64);
-            this.btnAlterarLocal.TabIndex = 3;
+            this.EstiloTextBox(this.txtSavePath, 20);
+
+            this.btnAlterarLocal.Location = new System.Drawing.Point(190, 390);
+            this.btnAlterarLocal.Size = new System.Drawing.Size(290, 60);
             this.btnAlterarLocal.Text = "Alterar Local";
-            this.EstilizarBotaoPill(this.btnAlterarLocal);
+            this.EstiloPill(this.btnAlterarLocal);
             this.btnAlterarLocal.Click += new System.EventHandler(this.btnAlterarLocal_Click);
 
-            // =================================================================
-            // pnlConfiguracoes
-            // =================================================================
-            this.pnlConfiguracoes.Anchor = ((System.Windows.Forms.AnchorStyles)((((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom)
-                        | System.Windows.Forms.AnchorStyles.Left)
-                        | System.Windows.Forms.AnchorStyles.Right)));
+            // ==============================================================
+            // CONFIGURAÇÕES — card 2 colunas
+            // ==============================================================
+            this.pnlConfiguracoes.Dock = System.Windows.Forms.DockStyle.Fill;
             this.pnlConfiguracoes.BackColor = System.Drawing.Color.Transparent;
-            this.pnlConfiguracoes.Location = new System.Drawing.Point(0, 0);
             this.pnlConfiguracoes.Name = "pnlConfiguracoes";
-            this.pnlConfiguracoes.Size = new System.Drawing.Size(730, 550);
-            this.pnlConfiguracoes.TabIndex = 3;
             this.pnlConfiguracoes.Visible = false;
-            this.pnlConfiguracoes.Controls.Add(this.picLogoConfig);
-            this.pnlConfiguracoes.Controls.Add(this.lblUsoCookiesTitulo);
-            this.pnlConfiguracoes.Controls.Add(this.btnAjudaCookies);
-            this.pnlConfiguracoes.Controls.Add(this.lblOpcaoArquivoCookies);
-            this.pnlConfiguracoes.Controls.Add(this.radCookiesArquivo);
-            this.pnlConfiguracoes.Controls.Add(this.txtCookiesArquivo);
-            this.pnlConfiguracoes.Controls.Add(this.lblOpcaoNavegadorCookies);
-            this.pnlConfiguracoes.Controls.Add(this.radCookiesNavegador);
-            this.pnlConfiguracoes.Controls.Add(this.cmbNavegador);
-            this.pnlConfiguracoes.Controls.Add(this.radSemCookies);
-            this.pnlConfiguracoes.Controls.Add(this.lblSemCookies);
-            this.pnlConfiguracoes.Controls.Add(this.lblPlaylistTitulo);
-            this.pnlConfiguracoes.Controls.Add(this.lblPlaylistSubtitulo);
-            this.pnlConfiguracoes.Controls.Add(this.chkOrganizarPlaylist);
-            this.pnlConfiguracoes.Controls.Add(this.lblAtualizarTitulo);
-            this.pnlConfiguracoes.Controls.Add(this.lblAtualizarStatus);
-            this.pnlConfiguracoes.Controls.Add(this.btnAtualizarYtDlp);
-            //
-            // picLogoConfig (mesma ilustração da Home, para manter a identidade visual)
-            //
-            this.picLogoConfig.Location = new System.Drawing.Point(275, 30);
-            this.picLogoConfig.Name = "picLogoConfig";
-            this.picLogoConfig.Size = new System.Drawing.Size(140, 140);
+            this.pnlConfiguracoes.Controls.Add(cardConfig);
+
+            this.cardConfig.Anchor = ((System.Windows.Forms.AnchorStyles)
+                (System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom |
+                 System.Windows.Forms.AnchorStyles.Left | System.Windows.Forms.AnchorStyles.Right));
+            this.cardConfig.BorderRadius = 24;
+            this.cardConfig.FillColor = CorCard;
+            this.cardConfig.Location = new System.Drawing.Point(30, 30);
+            this.cardConfig.Size = new System.Drawing.Size(670, 490);
+            this.cardConfig.Name = "cardConfig";
+            this.cardConfig.Controls.AddRange(new System.Windows.Forms.Control[]
+            {
+                lblTituloCardConfig, picLogoConfig,
+                // col esq
+                lblUsoCookiesTitulo, btnAjudaCookies,
+                lblOpcaoArquivoCookies, radCookiesArquivo, txtCookiesArquivo,
+                lblOpcaoNavegadorCookies, radCookiesNavegador, cmbNavegador,
+                radSemCookies, lblSemCookies,
+                // col dir
+                lblPlaylistTitulo, lblPlaylistSubtitulo, chkOrganizarPlaylist,
+                lblAtualizarTitulo, lblAtualizarStatus, btnAtualizarYtDlp
+            });
+
+            this.lblTituloCardConfig.AutoSize = true;
+            this.lblTituloCardConfig.Font = new System.Drawing.Font("Consolas", 18F, System.Drawing.FontStyle.Bold);
+            this.lblTituloCardConfig.ForeColor = CorTextoEscuro;
+            this.lblTituloCardConfig.Location = new System.Drawing.Point(30, 26);
+            this.lblTituloCardConfig.Text = "Configurações";
+
+            this.picLogoConfig.Location = new System.Drawing.Point(250, 60);
+            this.picLogoConfig.Size = new System.Drawing.Size(120, 120);
             this.picLogoConfig.SizeMode = System.Windows.Forms.PictureBoxSizeMode.Zoom;
-            this.picLogoConfig.TabIndex = 0;
-            this.picLogoConfig.TabStop = false;
-            //
-            // ===================== COLUNA ESQUERDA: COOKIES =====================
-            //
-            // lblUsoCookiesTitulo
-            //
+            this.picLogoConfig.BackColor = System.Drawing.Color.Transparent;
+
+            // Coluna esquerda (cookies) — x = 30
+            int cx = 30, cy = 200;
             this.lblUsoCookiesTitulo.AutoSize = true;
-            this.lblUsoCookiesTitulo.Font = new System.Drawing.Font("Consolas", 13F, System.Drawing.FontStyle.Bold);
-            this.lblUsoCookiesTitulo.ForeColor = CorTextoClaro;
-            this.lblUsoCookiesTitulo.Location = new System.Drawing.Point(40, 190);
-            this.lblUsoCookiesTitulo.Name = "lblUsoCookiesTitulo";
-            this.lblUsoCookiesTitulo.Size = new System.Drawing.Size(200, 22);
-            this.lblUsoCookiesTitulo.TabIndex = 1;
+            this.lblUsoCookiesTitulo.Font = new System.Drawing.Font("Consolas", 12F, System.Drawing.FontStyle.Bold);
+            this.lblUsoCookiesTitulo.ForeColor = CorTextoEscuro;
+            this.lblUsoCookiesTitulo.Location = new System.Drawing.Point(cx, cy);
             this.lblUsoCookiesTitulo.Text = "Uso de Cookies:";
-            //
-            // btnAjudaCookies
-            //
-            this.btnAjudaCookies.BorderRadius = 13;
+
+            this.btnAjudaCookies.BorderRadius = 12;
             this.btnAjudaCookies.FillColor = CorAcento;
             this.btnAjudaCookies.ForeColor = System.Drawing.Color.White;
             this.btnAjudaCookies.Font = new System.Drawing.Font("Consolas", 9F, System.Drawing.FontStyle.Bold);
             this.btnAjudaCookies.HoverState.FillColor = CorAcentoHover;
-            this.btnAjudaCookies.Location = new System.Drawing.Point(232, 192);
-            this.btnAjudaCookies.Name = "btnAjudaCookies";
+            this.btnAjudaCookies.Location = new System.Drawing.Point(cx + 196, cy + 2);
             this.btnAjudaCookies.Size = new System.Drawing.Size(26, 26);
-            this.btnAjudaCookies.TabIndex = 2;
             this.btnAjudaCookies.Text = "?";
             this.btnAjudaCookies.Animated = true;
             this.btnAjudaCookies.Click += new System.EventHandler(this.btnAjudaCookies_Click);
-            //
-            // lblOpcaoArquivoCookies
-            //
+
+            cy += 34;
             this.lblOpcaoArquivoCookies.AutoSize = true;
             this.lblOpcaoArquivoCookies.Font = new System.Drawing.Font("Consolas", 10F);
-            this.lblOpcaoArquivoCookies.ForeColor = CorTextoClaro;
-            this.lblOpcaoArquivoCookies.Location = new System.Drawing.Point(40, 224);
-            this.lblOpcaoArquivoCookies.Name = "lblOpcaoArquivoCookies";
-            this.lblOpcaoArquivoCookies.Size = new System.Drawing.Size(230, 17);
-            this.lblOpcaoArquivoCookies.TabIndex = 3;
+            this.lblOpcaoArquivoCookies.ForeColor = CorTextoMuted;
+            this.lblOpcaoArquivoCookies.Location = new System.Drawing.Point(cx, cy);
             this.lblOpcaoArquivoCookies.Text = "Usar arquivo cookies.txt";
-            //
-            // radCookiesArquivo
-            //
+
+            cy += 24;
             this.radCookiesArquivo.CheckedState.BorderColor = CorAcento;
             this.radCookiesArquivo.CheckedState.FillColor = CorAcento;
-            this.radCookiesArquivo.Location = new System.Drawing.Point(40, 250);
-            this.radCookiesArquivo.Name = "radCookiesArquivo";
-            this.radCookiesArquivo.Size = new System.Drawing.Size(32, 32);
-            this.radCookiesArquivo.TabIndex = 4;
+            this.radCookiesArquivo.Location = new System.Drawing.Point(cx, cy);
+            this.radCookiesArquivo.Size = new System.Drawing.Size(30, 30);
             this.radCookiesArquivo.Text = "";
             this.radCookiesArquivo.CheckedChanged += new System.EventHandler(this.OpcaoDeAutenticacao_CheckedChanged);
-            //
-            // txtCookiesArquivo
-            //
-            // Sem botão "Buscar" separado: clicar no campo já abre o seletor de
-            // arquivo (ver txtCookiesArquivo_Click em MainForm.cs), pra manter a
-            // coluna mais limpa.
+
             this.txtCookiesArquivo.Cursor = System.Windows.Forms.Cursors.Hand;
             this.txtCookiesArquivo.Enabled = false;
-            this.txtCookiesArquivo.Location = new System.Drawing.Point(82, 250);
-            this.txtCookiesArquivo.Name = "txtCookiesArquivo";
-            this.txtCookiesArquivo.PlaceholderText = "Toque para escolher o arquivo...";
+            this.txtCookiesArquivo.Location = new System.Drawing.Point(cx + 40, cy);
+            this.txtCookiesArquivo.Size = new System.Drawing.Size(255, 32);
+            this.txtCookiesArquivo.PlaceholderText = "Toque para selecionar...";
             this.txtCookiesArquivo.ReadOnly = true;
-            this.txtCookiesArquivo.Size = new System.Drawing.Size(248, 34);
-            this.txtCookiesArquivo.TabIndex = 5;
-            this.EstilizarCampoTexto(this.txtCookiesArquivo, 17);
+            this.EstiloTextBox(this.txtCookiesArquivo, 16);
             this.txtCookiesArquivo.Click += new System.EventHandler(this.txtCookiesArquivo_Click);
-            //
-            // lblOpcaoNavegadorCookies
-            //
+
+            cy += 44;
             this.lblOpcaoNavegadorCookies.AutoSize = true;
             this.lblOpcaoNavegadorCookies.Font = new System.Drawing.Font("Consolas", 10F);
-            this.lblOpcaoNavegadorCookies.ForeColor = CorTextoClaro;
-            this.lblOpcaoNavegadorCookies.Location = new System.Drawing.Point(40, 300);
-            this.lblOpcaoNavegadorCookies.Name = "lblOpcaoNavegadorCookies";
-            this.lblOpcaoNavegadorCookies.Size = new System.Drawing.Size(250, 17);
-            this.lblOpcaoNavegadorCookies.TabIndex = 6;
+            this.lblOpcaoNavegadorCookies.ForeColor = CorTextoMuted;
+            this.lblOpcaoNavegadorCookies.Location = new System.Drawing.Point(cx, cy);
             this.lblOpcaoNavegadorCookies.Text = "Usar cookies do navegador";
-            //
-            // radCookiesNavegador
-            //
+
+            cy += 24;
             this.radCookiesNavegador.CheckedState.BorderColor = CorAcento;
             this.radCookiesNavegador.CheckedState.FillColor = CorAcento;
-            this.radCookiesNavegador.Location = new System.Drawing.Point(40, 326);
-            this.radCookiesNavegador.Name = "radCookiesNavegador";
-            this.radCookiesNavegador.Size = new System.Drawing.Size(32, 32);
-            this.radCookiesNavegador.TabIndex = 7;
+            this.radCookiesNavegador.Location = new System.Drawing.Point(cx, cy);
+            this.radCookiesNavegador.Size = new System.Drawing.Size(30, 30);
             this.radCookiesNavegador.Text = "";
             this.radCookiesNavegador.CheckedChanged += new System.EventHandler(this.OpcaoDeAutenticacao_CheckedChanged);
-            //
-            // cmbNavegador
-            //
+
             this.cmbNavegador.BackColor = System.Drawing.Color.Transparent;
-            this.cmbNavegador.BorderRadius = 17;
+            this.cmbNavegador.BorderRadius = 16;
             this.cmbNavegador.BorderColor = System.Drawing.Color.Transparent;
             this.cmbNavegador.Enabled = false;
-            this.cmbNavegador.FillColor = CorCartao;
+            this.cmbNavegador.FillColor = CorCampo;
             this.cmbNavegador.ForeColor = CorTextoEscuro;
             this.cmbNavegador.Font = new System.Drawing.Font("Consolas", 10F);
-            this.cmbNavegador.Items.AddRange(new object[] {
-            "chrome",
-            "edge",
-            "firefox",
-            "brave",
-            "opera",
-            "vivaldi",
-            "chromium"});
-            this.cmbNavegador.Location = new System.Drawing.Point(82, 326);
-            this.cmbNavegador.Name = "cmbNavegador";
-            this.cmbNavegador.Size = new System.Drawing.Size(248, 34);
-            this.cmbNavegador.TabIndex = 8;
-            //
-            // radSemCookies
-            //
+            this.cmbNavegador.Items.AddRange(new object[] { "chrome","edge","firefox","brave","opera","vivaldi","chromium" });
+            this.cmbNavegador.Location = new System.Drawing.Point(cx + 40, cy);
+            this.cmbNavegador.Size = new System.Drawing.Size(255, 32);
+
+            cy += 44;
             this.radSemCookies.Checked = true;
             this.radSemCookies.CheckedState.BorderColor = CorAcento;
             this.radSemCookies.CheckedState.FillColor = CorAcento;
-            this.radSemCookies.Location = new System.Drawing.Point(40, 378);
-            this.radSemCookies.Name = "radSemCookies";
-            this.radSemCookies.Size = new System.Drawing.Size(32, 32);
-            this.radSemCookies.TabIndex = 9;
+            this.radSemCookies.Location = new System.Drawing.Point(cx, cy);
+            this.radSemCookies.Size = new System.Drawing.Size(30, 30);
             this.radSemCookies.TabStop = true;
             this.radSemCookies.Text = "";
             this.radSemCookies.CheckedChanged += new System.EventHandler(this.OpcaoDeAutenticacao_CheckedChanged);
-            //
-            // lblSemCookies
-            //
+
             this.lblSemCookies.AutoSize = true;
             this.lblSemCookies.Font = new System.Drawing.Font("Consolas", 10F);
-            this.lblSemCookies.ForeColor = CorTextoClaro;
-            this.lblSemCookies.Location = new System.Drawing.Point(82, 386);
-            this.lblSemCookies.Name = "lblSemCookies";
-            this.lblSemCookies.Size = new System.Drawing.Size(160, 17);
-            this.lblSemCookies.TabIndex = 10;
+            this.lblSemCookies.ForeColor = CorTextoEscuro;
+            this.lblSemCookies.Location = new System.Drawing.Point(cx + 40, cy + 8);
             this.lblSemCookies.Text = "Não usar cookies";
-            //
-            // ================ COLUNA DIREITA: PLAYLIST + ATUALIZAÇÃO ================
-            //
-            // lblPlaylistTitulo
-            //
+
+            // Coluna direita (playlist + atualização) — x = 360
+            int dx = 360; int dy = 200;
             this.lblPlaylistTitulo.AutoSize = true;
-            this.lblPlaylistTitulo.Font = new System.Drawing.Font("Consolas", 13F, System.Drawing.FontStyle.Bold);
-            this.lblPlaylistTitulo.ForeColor = CorTextoClaro;
-            this.lblPlaylistTitulo.Location = new System.Drawing.Point(390, 190);
-            this.lblPlaylistTitulo.Name = "lblPlaylistTitulo";
-            this.lblPlaylistTitulo.Size = new System.Drawing.Size(260, 22);
-            this.lblPlaylistTitulo.TabIndex = 11;
+            this.lblPlaylistTitulo.Font = new System.Drawing.Font("Consolas", 12F, System.Drawing.FontStyle.Bold);
+            this.lblPlaylistTitulo.ForeColor = CorTextoEscuro;
+            this.lblPlaylistTitulo.Location = new System.Drawing.Point(dx, dy);
             this.lblPlaylistTitulo.Text = "Download de Playlists:";
-            //
-            // lblPlaylistSubtitulo
-            //
+
+            dy += 30;
             this.lblPlaylistSubtitulo.AutoSize = true;
             this.lblPlaylistSubtitulo.Font = new System.Drawing.Font("Consolas", 10F);
-            this.lblPlaylistSubtitulo.ForeColor = CorTextoClaro;
-            this.lblPlaylistSubtitulo.Location = new System.Drawing.Point(390, 224);
-            this.lblPlaylistSubtitulo.Name = "lblPlaylistSubtitulo";
-            this.lblPlaylistSubtitulo.Size = new System.Drawing.Size(220, 17);
-            this.lblPlaylistSubtitulo.TabIndex = 12;
+            this.lblPlaylistSubtitulo.ForeColor = CorTextoMuted;
+            this.lblPlaylistSubtitulo.Location = new System.Drawing.Point(dx, dy);
             this.lblPlaylistSubtitulo.Text = "Escolha como salvá-las";
-            //
-            // chkOrganizarPlaylist
-            //
+
+            dy += 28;
             this.chkOrganizarPlaylist.CheckedState.BorderColor = CorAcento;
             this.chkOrganizarPlaylist.CheckedState.FillColor = CorAcento;
             this.chkOrganizarPlaylist.Font = new System.Drawing.Font("Consolas", 10F);
-            this.chkOrganizarPlaylist.ForeColor = CorTextoClaro;
-            this.chkOrganizarPlaylist.Location = new System.Drawing.Point(390, 250);
-            this.chkOrganizarPlaylist.Name = "chkOrganizarPlaylist";
-            this.chkOrganizarPlaylist.Size = new System.Drawing.Size(300, 32);
-            this.chkOrganizarPlaylist.TabIndex = 13;
+            this.chkOrganizarPlaylist.ForeColor = CorTextoEscuro;
+            this.chkOrganizarPlaylist.Location = new System.Drawing.Point(dx, dy);
+            this.chkOrganizarPlaylist.Size = new System.Drawing.Size(280, 30);
             this.chkOrganizarPlaylist.Text = "Organizar em Subpastas";
-            //
-            // lblAtualizarTitulo
-            //
+
+            dy += 60;
             this.lblAtualizarTitulo.AutoSize = true;
-            this.lblAtualizarTitulo.Font = new System.Drawing.Font("Consolas", 13F, System.Drawing.FontStyle.Bold);
-            this.lblAtualizarTitulo.ForeColor = CorTextoClaro;
-            this.lblAtualizarTitulo.Location = new System.Drawing.Point(390, 320);
-            this.lblAtualizarTitulo.Name = "lblAtualizarTitulo";
-            this.lblAtualizarTitulo.Size = new System.Drawing.Size(200, 22);
-            this.lblAtualizarTitulo.TabIndex = 14;
+            this.lblAtualizarTitulo.Font = new System.Drawing.Font("Consolas", 12F, System.Drawing.FontStyle.Bold);
+            this.lblAtualizarTitulo.ForeColor = CorTextoEscuro;
+            this.lblAtualizarTitulo.Location = new System.Drawing.Point(dx, dy);
             this.lblAtualizarTitulo.Text = "Atualizar yt-dlp:";
-            //
-            // lblAtualizarStatus
-            //
+
+            dy += 30;
             this.lblAtualizarStatus.AutoSize = true;
             this.lblAtualizarStatus.Font = new System.Drawing.Font("Consolas", 10F);
-            this.lblAtualizarStatus.ForeColor = CorTextoClaro;
-            this.lblAtualizarStatus.Location = new System.Drawing.Point(390, 354);
-            this.lblAtualizarStatus.Name = "lblAtualizarStatus";
-            this.lblAtualizarStatus.Size = new System.Drawing.Size(220, 17);
-            this.lblAtualizarStatus.TabIndex = 15;
+            this.lblAtualizarStatus.ForeColor = CorTextoMuted;
+            this.lblAtualizarStatus.Location = new System.Drawing.Point(dx, dy);
             this.lblAtualizarStatus.Text = "Verifique se há atualizações";
-            //
-            // btnAtualizarYtDlp
-            //
-            this.btnAtualizarYtDlp.Location = new System.Drawing.Point(390, 382);
-            this.btnAtualizarYtDlp.Name = "btnAtualizarYtDlp";
-            this.btnAtualizarYtDlp.Size = new System.Drawing.Size(300, 60);
-            this.btnAtualizarYtDlp.TabIndex = 16;
+
+            dy += 28;
+            this.btnAtualizarYtDlp.Location = new System.Drawing.Point(dx, dy);
+            this.btnAtualizarYtDlp.Size = new System.Drawing.Size(280, 56);
             this.btnAtualizarYtDlp.Text = "Atualizar yt-dlp";
-            this.EstilizarBotaoPill(this.btnAtualizarYtDlp);
+            this.EstiloPill(this.btnAtualizarYtDlp);
             this.btnAtualizarYtDlp.Click += new System.EventHandler(this.btnAtualizarYtDlp_Click);
 
-            // =================================================================
-            // pnlStatusBar
-            // =================================================================
-            this.pnlStatusBar.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left | System.Windows.Forms.AnchorStyles.Right)));
-            this.pnlStatusBar.BackColor = CorFundoStatusBar;
+            // ==============================================================
+            // BARRA DE STATUS
+            // ==============================================================
+            this.pnlStatusBar.Anchor = System.Windows.Forms.AnchorStyles.Bottom |
+                System.Windows.Forms.AnchorStyles.Left | System.Windows.Forms.AnchorStyles.Right;
+            this.pnlStatusBar.BackColor = CorStatusBar;
             this.pnlStatusBar.Location = new System.Drawing.Point(90, 550);
-            this.pnlStatusBar.Name = "pnlStatusBar";
             this.pnlStatusBar.Size = new System.Drawing.Size(730, 90);
-            this.pnlStatusBar.TabIndex = 2;
-            this.pnlStatusBar.Controls.Add(this.lblProgressPercent);
-            this.pnlStatusBar.Controls.Add(this.progressBar1);
-            this.pnlStatusBar.Controls.Add(this.lblStatus);
-            //
-            // lblStatus
-            //
-            this.lblStatus.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left | System.Windows.Forms.AnchorStyles.Right)));
+            this.pnlStatusBar.Name = "pnlStatusBar";
+            this.pnlStatusBar.Controls.AddRange(new System.Windows.Forms.Control[]
+                { lblStatus, progressBar1, lblProgressPercent });
+
+            this.lblStatus.Anchor = System.Windows.Forms.AnchorStyles.Top |
+                System.Windows.Forms.AnchorStyles.Left | System.Windows.Forms.AnchorStyles.Right;
             this.lblStatus.AutoEllipsis = true;
             this.lblStatus.Font = new System.Drawing.Font("Consolas", 11F);
             this.lblStatus.ForeColor = CorTextoClaro;
             this.lblStatus.Location = new System.Drawing.Point(20, 12);
-            this.lblStatus.Name = "lblStatus";
-            this.lblStatus.Size = new System.Drawing.Size(600, 24);
-            this.lblStatus.TabIndex = 0;
+            this.lblStatus.Size = new System.Drawing.Size(620, 24);
             this.lblStatus.Text = "Pronto para uso.";
-            //
-            // progressBar1
-            //
-            this.progressBar1.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left | System.Windows.Forms.AnchorStyles.Right)));
+
+            this.progressBar1.Anchor = System.Windows.Forms.AnchorStyles.Bottom |
+                System.Windows.Forms.AnchorStyles.Left | System.Windows.Forms.AnchorStyles.Right;
             this.progressBar1.BorderRadius = 0;
             this.progressBar1.FillColor = System.Drawing.Color.FromArgb(40, 40, 40);
             this.progressBar1.ProgressColor = CorAcento;
             this.progressBar1.ProgressColor2 = CorAcento;
             this.progressBar1.Location = new System.Drawing.Point(0, 64);
-            this.progressBar1.Name = "progressBar1";
             this.progressBar1.Size = new System.Drawing.Size(730, 26);
-            this.progressBar1.TabIndex = 1;
-            //
-            // lblProgressPercent
-            //
-            this.lblProgressPercent.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
+
+            this.lblProgressPercent.Anchor = System.Windows.Forms.AnchorStyles.Top |
+                System.Windows.Forms.AnchorStyles.Right;
             this.lblProgressPercent.AutoSize = true;
             this.lblProgressPercent.Font = new System.Drawing.Font("Consolas", 10F);
             this.lblProgressPercent.ForeColor = CorTextoClaro;
             this.lblProgressPercent.Location = new System.Drawing.Point(660, 15);
-            this.lblProgressPercent.Name = "lblProgressPercent";
-            this.lblProgressPercent.Size = new System.Drawing.Size(40, 18);
-            this.lblProgressPercent.TabIndex = 2;
             this.lblProgressPercent.Text = "0%";
 
-            // =================================================================
-            // notifyIcon1
-            // =================================================================
+            // ==============================================================
+            // NOTIFICAÇÕES
+            // ==============================================================
             this.notifyIcon1.Text = "YtDlp GUI";
             this.notifyIcon1.Visible = false;
 
-            // =================================================================
-            // MainForm
-            // =================================================================
+            // ==============================================================
+            // MAINFORM
+            // ==============================================================
             this.AutoScaleDimensions = new System.Drawing.SizeF(7F, 15F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.BackColor = CorFundo;
             this.ClientSize = new System.Drawing.Size(820, 640);
             this.MinimumSize = new System.Drawing.Size(700, 560);
-            this.Controls.Add(this.pnlStatusBar);
-            this.Controls.Add(this.pnlContent);
-            this.Controls.Add(this.pnlSidebar);
-            this.Name = "MainForm";
+            this.Font = new System.Drawing.Font("Consolas", 9F);
             this.StartPosition = System.Windows.Forms.FormStartPosition.CenterScreen;
             this.Text = "Downloader de Vídeos - yt-dlp GUI";
+            this.Name = "MainForm";
+            this.Controls.Add(pnlContent);
+            this.Controls.Add(pnlStatusBar);
+            this.Controls.Add(pnlSidebar);
 
-            ((System.ComponentModel.ISupportInitialize)(this.picLogo)).EndInit();
-            ((System.ComponentModel.ISupportInitialize)(this.picNavHistorico)).EndInit();
-            ((System.ComponentModel.ISupportInitialize)(this.picNavPasta)).EndInit();
-            ((System.ComponentModel.ISupportInitialize)(this.picNavConfig)).EndInit();
-            ((System.ComponentModel.ISupportInitialize)(this.picLogoGrande)).EndInit();
-            ((System.ComponentModel.ISupportInitialize)(this.picIlustracaoPasta)).EndInit();
-            ((System.ComponentModel.ISupportInitialize)(this.picLogoConfig)).EndInit();
+            foreach (var pb in new System.Windows.Forms.PictureBox[]
+                { picLogo, picNavHistorico, picNavPasta, picNavConfig,
+                  picLogoGrande, picIlustracaoPasta, picLogoConfig, picThumb })
+                ((System.ComponentModel.ISupportInitialize)pb).EndInit();
             this.menuHistorico.ResumeLayout(false);
             this.ResumeLayout(false);
         }
