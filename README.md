@@ -15,13 +15,19 @@ YtDlpGui/
 ├── Program.cs                  # ponto de entrada da aplicação
 ├── MainForm.cs                  # toda a lógica: navegação, download, notificações
 ├── MainForm.Designer.cs         # layout visual (barra lateral + 4 páginas + status bar)
-├── GerenciadorHistorico.cs      # persistência do histórico em JSON (%AppData%)
+├── Tema.cs                     # acabamento visual: barra de título escura, lista do histórico, ícones
+├── GerenciadorHistorico.cs      # persistência do histórico em JSON (%AppData%), com gravação atômica e quarentena
+├── GerenciadorLog.cs            # logs de erro/atividade em .txt na pasta do programa (ver seção 13)
+├── AutoReparo.cs                # autodiagnóstico e autorreparo (ver seção 13)
+├── ProcessosFilhos.cs           # controle e encerramento dos processos do yt-dlp
+├── RastreadorDeArquivos.cs      # descobre os arquivos FINAIS de cada download (para o histórico)
 ├── FiltroConteudo.cs             # MÓDULO OPCIONAL: bloqueio de sites (ver seção 9)
 ├── filtro-conteudo.exemplo.json  # exemplo de configuração do filtro (inerte por si só)
 ├── icon.ico                     # ícone do app (janela, taskbar, .exe)
 ├── Assets/                      # ícones e ilustrações (logo, navegação, botões)
 ├── publicar.ps1                 # script que gera o pacote pronto para distribuir
 ├── LEIA-ME.txt                  # instruções para o usuário final (vai dentro do pacote)
+├── ANALISE-E-CORRECOES.md       # relatório da análise de integridade (problemas achados e o que mudou)
 └── README.md                    # este arquivo (documentação técnica)
 ```
 
@@ -75,7 +81,8 @@ comum. Isso foi removido da interface. Em vez disso:
   45%", "Convertendo para MP3...", "Finalizando arquivo...").
 - Toda a saída bruta (stdout + stderr) continua sendo gravada, mas
   **silenciosamente**, em um arquivo de log para fins de suporte/depuração:
-  `%AppData%\YtDlpGui\log.txt` (função `RegistrarLog`). Isso preserva a
+  `log-atividade.txt`, na pasta do programa (função `RegistrarLog`, que usa o
+  `GerenciadorLog` — veja a seção 13). Isso preserva a
   possibilidade de diagnosticar problemas sem expor o usuário a jargão
   técnico.
 - Em caso de falha, `TraduzirErro()` mapeia as mensagens de erro mais
@@ -159,6 +166,46 @@ forçada manualmente (desmarca os outros dois sempre que um é marcado),
 com uma flag `_atualizandoOpcaoDeAutenticacao` para evitar reentrância
 infinita do evento `CheckedChanged`.
 
+### Extrator de cookies.txt (resolve o erro "403 Forbidden")
+
+Usuários relataram receber `403 Forbidden` com frequência usando
+"Cookies do navegador" (`--cookies-from-browser`) diretamente. As duas
+causas mais comuns:
+
+1. O navegador **trava o próprio arquivo de cookies** (SQLite) enquanto
+   está aberto, então o yt-dlp não consegue ler.
+2. A decriptação dos cookies via DPAPI do Windows falha de forma
+   inconsistente dependendo da versão/atualização do navegador.
+
+Em vez de ler os cookies **ao vivo** a cada download, o botão
+**"Extrair cookies.txt"** (ao lado do combo de navegador, em
+Configurações) roda o yt-dlp **uma vez** com:
+
+```
+--cookies-from-browser <navegador> --cookies cookies.txt --skip-download --simulate
+```
+
+usando um vídeo estável do YouTube só como gatilho (nada é baixado). Isso
+grava um arquivo `cookies.txt` físico, estável, na pasta do programa
+(`AppDomain.CurrentDomain.BaseDirectory`). Depois de extrair, o app muda
+automaticamente para o modo "Arquivo cookies.txt" e já aponta pro arquivo
+recém-gerado (`btnExtrairCookies_Click`, em `MainForm.cs`) — o usuário não
+precisa selecionar nada manualmente.
+
+Os downloads passam a usar `--cookies cookies.txt` (leitura de arquivo
+simples), que não depende do navegador estar fechado nem de decriptação
+em tempo real — resolvendo o 403 na maioria dos casos.
+
+Erros comuns durante a extração são traduzidos por
+`TraduzirErroExtracaoCookies()`: perfil sem login, navegador travando o
+arquivo, ou falha de decriptação — cada um com uma orientação específica
+do que fazer.
+
+O usuário deve reextrair de tempos em tempos (quando o login do YouTube
+expirar no navegador). Não há verificação automática de expiração —
+se voltar a dar 403 depois de funcionar por um tempo, a orientação é
+simplesmente extrair de novo.
+
 ## 7. Cancelar download, playlist e organização em subpastas
 
 - Botão circular vermelho "X" (`btnCancelar`) mata o processo do yt-dlp
@@ -176,24 +223,40 @@ infinita do evento `CheckedChanged`.
   linhas `Downloading item X of Y` do yt-dlp), além da porcentagem do
   vídeo atual.
 
-## 8. Visual (Guna.UI2 + paleta do mockup)
+## 8. Visual 2.0 (tema escuro roxo, família NokyLabs)
 
-| Uso                            | Cor        |
-|----------------------------------|------------|
-| Fundo da área de conteúdo          | `#5C7F72`  |
-| Fundo da barra de status           | `#4E6E62`  |
-| Barra lateral / botões "pill"      | `#8FCEBB`  |
-| Campos de texto / cards            | `#FFFFFF`  |
-| Texto sobre fundo escuro           | `#FFFFFF`  |
-| Texto sobre fundo claro            | `#1F2937`  |
-| Acento (ativo/foco/progresso)      | `#2F7DE8`  |
-| Perigo (Cancelar/Limpar)           | `#E15C4F`  |
+A partir da versão 2.0 o app segue a identidade do launcher **NokyLabs**:
+fundo roxo-escuro, cards levemente mais claros, acento violeta com
+gradiente para magenta e ícones de traço fino.
 
-Constantes centralizadas no topo de `MainForm.Designer.cs`. Fonte usada em
-toda a interface: **Consolas** (monoespaçada, combinando com a estética do
-mockup). Os ícones/ilustrações ficam em `Assets/` (PNG, gerados como
-silhuetas simples: logo com linhas de movimento, relógio/histórico, pasta,
-engrenagem, seta de download, nota musical).
+| Uso                                   | Cor        |
+|---------------------------------------|------------|
+| Fundo da janela                       | `#0E0B16`  |
+| Barra lateral, rodapé e barra de título | `#130F1E` |
+| Cards                                 | `#1A1528`  |
+| Campos e seções internas              | `#221B34`  |
+| Bordas sutis                          | `#2E2545`  |
+| Texto principal / secundário          | `#EDE9F6` / `#A49BB8` |
+| Acento (botões, foco, progresso)      | `#8B5CF6` → `#D946EF` |
+| Perigo (Cancelar / Limpar)            | `#F43F5E`  |
+
+Constantes centralizadas no topo de `MainForm.Designer.cs`; fonte **Segoe UI**
+(padrão do Windows). O esqueleto da janela agora é todo por *Dock* (barra
+lateral à esquerda, rodapé embaixo, conteúdo preenchendo o resto), e os cards
+das páginas Início, Pasta e Configurações ficam sempre centralizados ao
+maximizar. O que não cabe no Designer fica em **`Tema.cs`**:
+
+- barra de título escura (Windows 10 1809+ e Windows 11);
+- ícones da barra lateral que acendem ao passar o mouse;
+- lista do histórico desenhada à mão (`ListaEscura`): linhas altas, etiqueta
+  MP4/MP3 colorida, destaque de seleção e barra de rolagem escura;
+- menu do botão direito no tema escuro;
+- novo botão **"Abrir no Explorer"** na página Pasta.
+
+Os ícones ficam em `Assets/` no formato `ic_<nome>_<cor>.png` (cores `muted`,
+`branco`, `roxo`, `rosa`), além de `logo_app.png` e `ilustracao_pasta.png`.
+Todos foram gerados pelo script `gerar_icones.py` (Python + Pillow, traço arredondado, 48 px), então dá para
+recriar ou trocar a cor de todos de uma vez.
 
 ### Ícone do aplicativo
 
@@ -371,3 +434,83 @@ decidir se vale a pena entrar num próximo ciclo:
   fixa atual.
 - **Verificação automática de atualização do yt-dlp** ao abrir o
   app (silenciosa, uma vez por dia), em vez de depender do botão manual.
+
+## 13. Logs de erro, integridade e autorreparo
+
+Esta seção descreve os "protocolos de integridade" do programa. O relatório
+completo da análise (o que foi encontrado e corrigido) está em
+`ANALISE-E-CORRECOES.md`.
+
+### 13.1. Logs em .txt na pasta do programa (`GerenciadorLog.cs`)
+
+| Arquivo               | Conteúdo                                                                 |
+|------------------------|---------------------------------------------------------------------------|
+| `log-erros.txt`         | Só problemas: erros com *stack trace* completo, avisos e reparos automáticos |
+| `log-atividade.txt`     | Linha do tempo: o que o programa fez, saída do yt-dlp (progresso de 25 em 25%) e cópia resumida dos erros |
+
+- Ficam **na mesma pasta do `YtDlpGui.exe`** (pasta de origem).
+- Se essa pasta não permitir gravação (Arquivos de Programas, pendrive protegido,
+  pasta de rede somente-leitura), o log muda **sozinho** para
+  `%AppData%\YtDlpGui` e, em último caso, para a pasta temporária — e registra
+  essa mudança. O programa nunca cai por causa de log.
+- **Rotação**: passando de ~1 MB (erros) / ~2 MB (atividade), o arquivo vira
+  `*.antigo.txt` (um só, sobrescrito) e começa um novo.
+- **Anti-enxurrada**: a mesma mensagem repetida em menos de 2 s é contada, não regravada.
+- Cada linha traz data/hora e o **nome do computador** (útil se o programa rodar
+  de uma pasta de rede usada por vários PCs). O cabeçalho de cada sessão traz a
+  versão do programa, do .NET e do Windows.
+- Os logs contêm as URLs baixadas. Se for um laboratório compartilhado, apague-os
+  de vez em quando.
+- Para reaproveitar em outra ferramenta: copie `GerenciadorLog.cs` (é autocontido)
+  e chame `GerenciadorLog.Erro/Aviso/Reparo/Atividade`.
+
+### 13.2. Rede de proteção contra erros (`Program.cs`)
+
+Erros de interface, de tarefas em segundo plano e erros fatais são capturados,
+gravados em `log-erros.txt` e — nos casos recuperáveis — o programa **continua
+aberto** com um aviso (no máximo um a cada 10 s). Um erro durante a abertura
+também deixa rastro. Os processos do yt-dlp são encerrados junto com o programa.
+
+### 13.3. Autodiagnóstico e autorreparo (`AutoReparo.cs`)
+
+Roda ao abrir o programa (depois que a janela aparece) e pode ser disparado
+manualmente com **Ctrl+Shift+D**. **Ctrl+Shift+L** abre a pasta de logs.
+
+| Verificação | O que faz sozinho | O que pergunta / avisa |
+|---|---|---|
+| Encerramento da sessão anterior (arquivo `sessao-PC-PID.lock`) | Detecta travamento/queda de energia e registra | — |
+| Pasta de logs | Usa plano B se a pasta do programa for protegida | — |
+| `historico.json` | Se corrompido, guarda cópia (`historico.corrompido-*.json`, 5 mais recentes) e recomeça | — |
+| `yt-dlp.exe` | — | Ausente/pequeno demais/sem cabeçalho "MZ": **oferece baixar** o oficial do GitHub, conferindo o SHA-256 da release |
+| `ffmpeg.exe` | — | Avisa no log (sem autorreparo: o arquivo é grande) |
+| Pasta `Assets` | — | Lista as imagens que faltam (o programa funciona sem elas) |
+| `filtro-conteudo.json` | — | Avisa se existir mas for inválido (nesse caso o filtro fica DESLIGADO) |
+
+Reparo em tempo de execução: se um download falhar com um erro típico de
+**yt-dlp desatualizado** (`Unable to extract`, `nsig extraction failed`,
+`Requested format is not available`, `HTTP Error 403`, "use the latest
+version"...), o programa **atualiza o yt-dlp (`-U`) e repete o mesmo download,
+uma única vez por sessão**, avisando na barra de status. Se também falhar, mostra o
+erro original.
+
+### 13.4. Outras proteções
+
+- Trava contra duplo clique / operações simultâneas (`_ocupado`).
+- URL "fotografada" uma vez antes do filtro de conteúdo (não dá mais para trocá-la durante a verificação).
+- Só aceita URLs `http://` e `https://`.
+- Tempo limite (40 s) nas consultas de prévia e de idade, e (2 min) na extração de cookies.
+- Aviso ao fechar o programa com um download em andamento.
+- Aviso de pouco espaço em disco (< 500 MB) antes de baixar.
+- Histórico: gravação atômica (arquivo temporário + troca), trava interna e uma única gravação por download de playlist.
+
+### 13.5. Cookies automáticos
+
+Se um download falhar porque o YouTube pediu login (robô / restrição de idade), o
+programa **pergunta** se pode copiar os cookies do **navegador padrão do Windows**
+(lido do registro: Chrome, Edge, Firefox, Brave, Opera ou Vivaldi), gera o
+`cookies.txt`, ativa o modo "arquivo" e repete o download. Isso é sugerido uma
+vez por sessão. Se a extração falhar (Chrome e Edge recentes costumam bloquear),
+o programa oferece abrir a página com instruções de uma ferramenta que exporta os
+cookies para `.txt`. O autodiagnóstico (Ctrl+Shift+D) também informa se o filtro
+de conteúdo está ligado ou desligado.
+

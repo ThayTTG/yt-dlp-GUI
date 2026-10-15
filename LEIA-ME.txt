@@ -84,14 +84,18 @@ que a playlist inteira aparece como um único item.
 --------------------------------------------------
 Vá na tela de CONFIGURAÇÕES (ícone de engrenagem) se:
 
-- O YouTube pedir para "confirmar que você não é um robô": marque
-  "Usar cookies do navegador" e escolha o navegador em que você está
-  logado no YouTube (Chrome, Edge, Firefox, etc.) — o programa lê os
-  cookies automaticamente e é a forma mais simples. Se preferir usar
-  um arquivo cookies.txt em vez disso, toque no botão "?" ao lado
-  dessa opção para ver o passo a passo de como gerar esse arquivo no
-  seu navegador (é feito com uma extensão gratuita, você não precisa
-  "criar" nada do zero).
+- O YouTube pedir para "confirmar que você não é um robô", ou os
+  downloads começarem a dar erro "403": escolha o navegador em que
+  você está logado no YouTube (Chrome, Edge, Firefox, etc.) no menu
+  de "Usar cookies do navegador", depois clique no botão
+  "Extrair cookies.txt" logo abaixo. Isso gera um arquivo com seus
+  cookies e o programa passa a usá-lo automaticamente daí em diante —
+  é mais confiável do que ler os cookies do navegador toda vez.
+  Se der erro na extração, feche o navegador completamente (inclusive
+  os ícones dele perto do relógio, na bandeja do sistema) e tente de
+  novo. Esse arquivo eventualmente expira (quando seu login do
+  YouTube expira no navegador) — se voltar a dar erro depois de um
+  tempo funcionando bem, é só extrair de novo.
 - Você baixa playlists com frequência: marque "Organizar cada
   playlist em uma subpasta própria" para que cada playlist baixada
   crie sua própria pastinha (com o nome da playlist) dentro do local
@@ -119,6 +123,11 @@ PROBLEMAS COMUNS
 - Pedido de confirmação de robô: veja a seção "Configurações" acima.
 - Download falha ou trava: vá em Configurações e clique em
   "Atualizar yt-dlp", depois tente novamente.
+- Algo deu errado e você precisa pedir ajuda: o programa guarda um
+  registro dos erros no arquivo "log-erros.txt", na mesma pasta do
+  YtDlpGui.exe. Envie esse arquivo para quem cuida do programa.
+  Dica: apertar Ctrl+Shift+L abre essa pasta, e Ctrl+Shift+D faz uma
+  verificação rápida do programa (e tenta consertar o que for possível).
 - Antivírus bloqueando: alguns antivírus alertam sobre o yt-dlp.exe
   por ele baixar arquivos da internet. É um comportamento normal
   dessa ferramenta (projeto de código aberto muito usado); se

@@ -6,6 +6,7 @@ using System.Linq;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 
@@ -81,10 +82,40 @@ namespace YtDlpGui
 
                 return config ?? new ConfiguracaoFiltroConteudo { Habilitado = false };
             }
-            catch
+            catch (Exception ex)
             {
                 // Configuração corrompida não deve travar o app nem bloquear downloads por engano.
+                // Mas o problema NÃO pode passar em branco: sem este aviso, o filtro ficaria
+                // desligado sem que ninguém soubesse o motivo.
+                GerenciadorLog.Aviso("filtro-conteudo.json não pôde ser lido; o filtro de conteúdo está DESLIGADO. Motivo: " + ex.Message);
                 return new ConfiguracaoFiltroConteudo { Habilitado = false };
+            }
+        }
+
+        /// <summary>
+        /// Usado pelo autodiagnóstico: se o arquivo de configuração existir, confere se ele
+        /// é um JSON válido. Retorna null se estiver tudo bem, ou a descrição do problema.
+        /// </summary>
+        public static string? ValidarArquivoDeConfiguracao()
+        {
+            try
+            {
+                string caminho = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, NomeArquivoConfig);
+                if (!File.Exists(caminho))
+                    return null; // sem arquivo = filtro desligado por design
+
+                string json = File.ReadAllText(caminho);
+                var config = JsonSerializer.Deserialize<ConfiguracaoFiltroConteudo>(json,
+                    new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+
+                if (config is null)
+                    return "o arquivo filtro-conteudo.json está vazio; o filtro está DESLIGADO";
+
+                return null;
+            }
+            catch (Exception ex)
+            {
+                return "o arquivo filtro-conteudo.json é inválido (" + ex.Message + "); o filtro está DESLIGADO até você corrigir";
             }
         }
 
@@ -156,42 +187,85 @@ namespace YtDlpGui
 
             try
             {
-                var psi = new ProcessStartInfo
-                {
-                    FileName = caminhoYtDlp,
-                    UseShellExecute = false,
-                    CreateNoWindow = true,
-                    RedirectStandardOutput = true,
-                    RedirectStandardError = true,
-                    StandardOutputEncoding = Encoding.UTF8,
-                };
+                var psi = new ProcessStartInfo { FileName = caminhoYtDlp };
                 psi.ArgumentList.Add("--dump-json");
                 psi.ArgumentList.Add("--no-warnings");
                 psi.ArgumentList.Add("--skip-download");
                 psi.ArgumentList.Add("--no-playlist");
                 psi.ArgumentList.Add(url);
 
-                using var processo = Process.Start(psi);
-                if (processo is null)
+                // Lê stdout e stderr ao mesmo tempo e com tempo limite de 40s: antes, o stderr nunca
+                // era lido (risco de travar para sempre se o yt-dlp escrevesse muito) e não havia
+                // limite de tempo (rede lenta = tela presa em "Verificando conteúdo...").
+                var resultado = await ProcessosFilhos.ExecutarCapturandoAsync(
+                    psi, TimeSpan.FromSeconds(40), CancellationToken.None);
+
+                if (resultado.TempoEsgotado)
+                {
+                    GerenciadorLog.Aviso("Filtro de conteúdo: a verificação de idade demorou demais e foi interrompida. URL: " + url);
                     return 0;
+                }
 
-                string saida = await processo.StandardOutput.ReadToEndAsync();
-                await processo.WaitForExitAsync();
+                // IMPORTANTE: vídeos com restrição de idade geralmente NÃO devolvem metadados sem
+                // login; o yt-dlp responde com um erro tipo "Sign in to confirm your age". Antes,
+                // esse caso caía no "não consegui determinar" e o vídeo era LIBERADO — justamente o
+                // tipo de vídeo que o filtro deveria bloquear. Agora esse erro conta como 18+.
+                if (IndicaRestricaoDeIdade(resultado.Erro))
+                    return 18;
 
-                using var doc = JsonDocument.Parse(saida);
+                if (string.IsNullOrWhiteSpace(resultado.Saida))
+                {
+                    GerenciadorLog.Aviso("Filtro de conteúdo: não foi possível obter os metadados para checar a idade (liberado por padrão). URL: " + url +
+                                         " | Detalhe: " + Resumir(resultado.Erro));
+                    return 0;
+                }
+
+                using var doc = JsonDocument.Parse(resultado.Saida);
                 if (doc.RootElement.TryGetProperty("age_limit", out var prop) &&
                     prop.ValueKind == JsonValueKind.Number)
                 {
                     return prop.GetInt32();
                 }
             }
-            catch
+            catch (Exception ex)
             {
                 // Se não der pra determinar (JSON inválido, vídeo indisponível, etc.),
-                // não bloqueia por causa disso — assume sem restrição de idade.
+                // não bloqueia por causa disso — assume sem restrição de idade, mas deixa registrado.
+                GerenciadorLog.Aviso("Filtro de conteúdo: falha ao checar restrição de idade (liberado por padrão): " + ex.Message);
             }
 
             return 0;
+        }
+
+        private static bool IndicaRestricaoDeIdade(string? erro)
+        {
+            if (string.IsNullOrWhiteSpace(erro))
+                return false;
+
+            string[] marcas =
+            {
+                "confirm your age",
+                "age-restricted",
+                "age restricted",
+                "inappropriate for some users"
+            };
+
+            foreach (string marca in marcas)
+            {
+                if (erro.Contains(marca, StringComparison.OrdinalIgnoreCase))
+                    return true;
+            }
+
+            return false;
+        }
+
+        private static string Resumir(string? texto)
+        {
+            if (string.IsNullOrWhiteSpace(texto))
+                return "(sem detalhes)";
+
+            string limpo = texto.Replace("\r", " ").Replace("\n", " ").Trim();
+            return limpo.Length > 300 ? limpo.Substring(0, 300) + "..." : limpo;
         }
 
         // ---------------------------------------------------------------

@@ -75,7 +75,7 @@ if (-not (Test-Path (Join-Path $pastaDist "YtDlpGui.exe"))) {
     throw "Falha ao copiar o YtDlpGui.exe para a pasta de distribuição."
 }
 if (-not (Test-Path (Join-Path $pastaDist "Assets"))) {
-    Write-Host "Aviso: a pasta Assets não foi encontrada na publicação - os ícones das telas podem não aparecer." -ForegroundColor Yellow
+    Write-Host "Aviso: a pasta Assets não foi encontrada na publicação — os ícones das telas podem não aparecer." -ForegroundColor Yellow
 }
 
 # --- 3. Download do yt-dlp.exe ---------------------------------------------
@@ -134,4 +134,4 @@ Write-Host "Pronto! Pacote gerado em:" -ForegroundColor Green
 Write-Host "  $arquivoZip" -ForegroundColor Green
 Write-Host ""
 Write-Host "Basta enviar esse .zip para qualquer usuário. Ele só precisa extrair" -ForegroundColor Green
-Write-Host "e dar dois cliques em YtDlpGui.exe - nada mais precisa ser instalado." -ForegroundColor Green
+Write-Host "e dar dois cliques em YtDlpGui.exe — nada mais precisa ser instalado." -ForegroundColor Green

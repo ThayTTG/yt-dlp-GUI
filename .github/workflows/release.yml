@@ -1,0 +1,76 @@
+name: Build e Release
+
+# Lança uma versão nova do YT-DLP GUI.
+#
+# Como disparar:
+#   • enviar qualquer commit para o branch "release"  → a tag vem do <Version> do .csproj
+#   • ou enviar uma tag no formato v1.2.3
+#
+# Usa o próprio publicar.ps1: gera o YtDlpGui.exe completo (não precisa de .NET)
+# e já inclui o yt-dlp.exe e o ffmpeg.exe. O arquivo final tem nome fixo
+# (YtDlpGui-win-x64.zip), usado pelo site e pelo NokyLabs Launcher.
+on:
+  push:
+    branches:
+      - release
+    tags:
+      - "v*"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-release:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "8.0.x"
+
+      - name: Descobrir a versão
+        id: versao
+        shell: pwsh
+        run: |
+          [xml]$proj = Get-Content YtDlpGui.csproj
+          $v = @($proj.Project.PropertyGroup | ForEach-Object { $_.Version } | Where-Object { $_ })[0]
+          if ("${{ github.ref_type }}" -eq "tag") { $tag = "${{ github.ref_name }}" } else { $tag = "v$v" }
+          "tag=$tag" >> $env:GITHUB_OUTPUT
+
+      - name: Gerar o pacote (publicar.ps1)
+        shell: pwsh
+        run: ./publicar.ps1
+
+      - name: Conferir e renomear
+        shell: pwsh
+        run: |
+          foreach ($f in "YtDlpGui.exe", "yt-dlp.exe", "ffmpeg.exe") {
+            if (-not (Test-Path "Distribuicao\$f")) { throw "Faltou o $f no pacote." }
+          }
+          Move-Item YtDlpGui-Portatil.zip YtDlpGui-win-x64.zip
+          (Get-FileHash YtDlpGui-win-x64.zip -Algorithm SHA256).Hash | Out-File -Encoding ascii YtDlpGui-win-x64.zip.sha256
+
+      - uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.versao.outputs.tag }}
+          name: YT-DLP GUI ${{ steps.versao.outputs.tag }}
+          target_commitish: ${{ github.sha }}
+          make_latest: true
+          files: |
+            YtDlpGui-win-x64.zip
+            YtDlpGui-win-x64.zip.sha256
+          body: |
+            ## YT-DLP GUI ${{ steps.versao.outputs.tag }}
+
+            Baixe vídeos e áudios colando um link, sem abrir o terminal. Feito para usar com a turma.
+
+            **Como instalar**
+            1. Baixe o `YtDlpGui-win-x64.zip` abaixo (ou instale pelo NokyLabs Launcher)
+            2. Extraia a pasta inteira e abra o `YtDlpGui.exe`
+            3. Se aparecer o aviso azul do Windows, clique em "Mais informações" › "Executar assim mesmo"
+
+            Já vem com o yt-dlp e o ffmpeg. Não precisa instalar o .NET.
+
+            Mais detalhes: https://thayttg.github.io/nokylabs/#ytdlp-gui
