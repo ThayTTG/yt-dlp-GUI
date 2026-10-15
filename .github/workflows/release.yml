@@ -34,7 +34,7 @@ jobs:
         id: versao
         shell: pwsh
         run: |
-          [xml]$proj = Get-Content YtDlpGui.csproj
+          [xml]$proj = Get-Content src/YtDlpGui/YtDlpGui.csproj
           $v = @($proj.Project.PropertyGroup | ForEach-Object { $_.Version } | Where-Object { $_ })[0]
           if ("${{ github.ref_type }}" -eq "tag") { $tag = "${{ github.ref_name }}" } else { $tag = "v$v" }
           "tag=$tag" >> $env:GITHUB_OUTPUT
@@ -53,17 +53,22 @@ jobs:
           Write-Host "A versão $tag é nova. Seguindo com o lançamento."
           exit 0
 
+      - name: Notas da versão (CHANGELOG.md)
+        id: notas
+        shell: pwsh
+        run: python .github/scripts/notas_da_versao.py ler "${{ steps.versao.outputs.tag }}" CHANGELOG.md
+
       - name: Gerar o pacote (publicar.ps1)
         shell: pwsh
-        run: ./publicar.ps1
+        run: ./src/YtDlpGui/publicar.ps1
 
       - name: Conferir e renomear
         shell: pwsh
         run: |
-          foreach ($f in "YtDlpGui.exe", "yt-dlp.exe", "ffmpeg.exe") {
-            if (-not (Test-Path "Distribuicao\$f")) { throw "Faltou o $f no pacote." }
+          foreach ($f in "YtDlpGui.exe", "yt-dlp.exe", "ffmpeg.exe", "icon.ico") {
+            if (-not (Test-Path "src\YtDlpGui\Distribuicao\$f")) { throw "Faltou o $f no pacote." }
           }
-          Move-Item YtDlpGui-Portatil.zip YtDlpGui-win-x64.zip
+          Move-Item src\YtDlpGui\YtDlpGui-Portatil.zip YtDlpGui-win-x64.zip
           (Get-FileHash YtDlpGui-win-x64.zip -Algorithm SHA256).Hash | Out-File -Encoding ascii YtDlpGui-win-x64.zip.sha256
 
       - uses: softprops/action-gh-release@v3
@@ -78,6 +83,11 @@ jobs:
           body: |
             ## YT-DLP GUI ${{ steps.versao.outputs.tag }}
 
+            ### O que há de novo
+            <!-- novidades -->
+            ${{ steps.notas.outputs.texto }}
+            <!-- /novidades -->
+
             Baixe vídeos e áudios colando um link, sem abrir o terminal. Feito para usar com a turma.
 
             **Como instalar**
@@ -88,3 +98,19 @@ jobs:
             Já vem com o yt-dlp e o ffmpeg. Não precisa instalar o .NET.
 
             Mais detalhes: https://thayttg.github.io/nokylabs/#ytdlp-gui
+
+      # Se as notas vieram da seção "Não lançado", ela vira a seção desta versão no CHANGELOG do main.
+      - name: Registrar a versão no CHANGELOG
+        if: steps.notas.outputs.promover == 'sim'
+        shell: bash
+        env:
+          PRINCIPAL: ${{ github.event.repository.default_branch }}
+        run: |
+          git fetch --depth 1 origin "$PRINCIPAL"
+          git checkout -f -B registrar-changelog "origin/$PRINCIPAL"
+          python .github/scripts/notas_da_versao.py promover "${{ steps.versao.outputs.tag }}" CHANGELOG.md
+          if git diff --quiet; then exit 0; fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -am "CHANGELOG: versão ${{ steps.versao.outputs.tag }}"
+          git push origin "HEAD:$PRINCIPAL" || echo "::warning::Não consegui registrar a versão no CHANGELOG; ajuste à mão."

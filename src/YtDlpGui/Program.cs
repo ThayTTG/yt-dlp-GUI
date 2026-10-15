@@ -96,7 +96,7 @@ namespace YtDlpGui
         {
             try
             {
-                MessageBox.Show(mensagem, "YtDlp GUI", MessageBoxButtons.OK, icone);
+                MessageBox.Show(mensagem, "YT-DLP GUI", MessageBoxButtons.OK, icone);
             }
             catch
             {

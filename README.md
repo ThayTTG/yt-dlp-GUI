@@ -10,24 +10,26 @@ bruta do yt-dlp em nenhum momento.
 ## Estrutura dos arquivos
 
 ```
-YtDlpGui/
-├── YtDlpGui.csproj            # projeto (.NET 8, WinForms, pacote Guna.UI2.WinForms)
-├── Program.cs                  # ponto de entrada da aplicação
-├── MainForm.cs                  # toda a lógica: navegação, download, notificações
-├── MainForm.Designer.cs         # layout visual (barra lateral + 4 páginas + status bar)
-├── Tema.cs                     # acabamento visual: barra de título escura, lista do histórico, ícones
-├── GerenciadorHistorico.cs      # persistência do histórico em JSON (%AppData%), com gravação atômica e quarentena
-├── GerenciadorLog.cs            # logs de erro/atividade em .txt na pasta do programa (ver seção 13)
-├── AutoReparo.cs                # autodiagnóstico e autorreparo (ver seção 13)
-├── ProcessosFilhos.cs           # controle e encerramento dos processos do yt-dlp
-├── RastreadorDeArquivos.cs      # descobre os arquivos FINAIS de cada download (para o histórico)
-├── FiltroConteudo.cs             # MÓDULO OPCIONAL: bloqueio de sites (ver seção 9)
-├── filtro-conteudo.exemplo.json  # exemplo de configuração do filtro (inerte por si só)
-├── icon.ico                     # ícone do app (janela, taskbar, .exe)
-├── Assets/                      # ícones e ilustrações (logo, navegação, botões)
-├── publicar.ps1                 # script que gera o pacote pronto para distribuir
-├── LEIA-ME.txt                  # instruções para o usuário final (vai dentro do pacote)
-├── ANALISE-E-CORRECOES.md       # relatório da análise de integridade (problemas achados e o que mudou)
+yt-dlp-GUI/
+├── src/YtDlpGui/               # o projeto do app
+│   ├── YtDlpGui.csproj            # projeto (.NET 8, WinForms, pacote Guna.UI2.WinForms)
+│   ├── Program.cs                  # ponto de entrada da aplicação
+│   ├── MainForm.cs                  # toda a lógica: navegação, download, notificações
+│   ├── MainForm.Designer.cs         # layout visual (barra lateral + 4 páginas + status bar)
+│   ├── Tema.cs                     # acabamento visual: barra de título escura, lista do histórico, ícones
+│   ├── GerenciadorHistorico.cs      # persistência do histórico em JSON (%AppData%), com gravação atômica e quarentena
+│   ├── GerenciadorLog.cs            # logs de erro/atividade em .txt na pasta do programa (ver seção 13)
+│   ├── AutoReparo.cs                # autodiagnóstico e autorreparo (ver seção 13)
+│   ├── ProcessosFilhos.cs           # controle e encerramento dos processos do yt-dlp
+│   ├── RastreadorDeArquivos.cs      # descobre os arquivos FINAIS de cada download (para o histórico)
+│   ├── FiltroConteudo.cs             # MÓDULO OPCIONAL: bloqueio de sites (ver seção 9)
+│   ├── filtro-conteudo.exemplo.json  # exemplo de configuração do filtro (inerte por si só)
+│   ├── icon.ico                     # ícone do app (janela, taskbar, .exe)
+│   ├── Assets/                      # ícones e ilustrações (logo, navegação, botões)
+│   ├── publicar.ps1                 # script que gera o pacote pronto para distribuir
+│   ├── LEIA-ME.txt                  # instruções para o usuário final (vai dentro do pacote)
+├── docs/ANALISE-E-CORRECOES.md  # relatório da análise de integridade (problemas achados e o que mudou)
+├── CHANGELOG.md                  # histórico de versões (vira o texto de cada lançamento)
 └── README.md                    # este arquivo (documentação técnica)
 ```
 
@@ -268,7 +270,7 @@ notificações). Para trocar, substitua o arquivo mantendo o nome.
 ### Instalando o Guna.UI2.WinForms
 
 ```bash
-cd YtDlpGui
+cd src/YtDlpGui
 dotnet restore
 ```
 
@@ -391,7 +393,7 @@ file, baixa `yt-dlp.exe` e `ffmpeg.exe` automaticamente, copia o
 Windows com .NET 8 SDK e internet:
 
 ```powershell
-cd YtDlpGui
+cd src\YtDlpGui
 .\publicar.ps1
 ```
 
@@ -439,7 +441,7 @@ decidir se vale a pena entrar num próximo ciclo:
 
 Esta seção descreve os "protocolos de integridade" do programa. O relatório
 completo da análise (o que foi encontrado e corrigido) está em
-`ANALISE-E-CORRECOES.md`.
+`docs/ANALISE-E-CORRECOES.md`.
 
 ### 13.1. Logs em .txt na pasta do programa (`GerenciadorLog.cs`)
 

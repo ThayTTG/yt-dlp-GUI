@@ -74,6 +74,11 @@ Get-ChildItem -Path $pastaPublish -Exclude "*.pdb" | Copy-Item -Destination $pas
 if (-not (Test-Path (Join-Path $pastaDist "YtDlpGui.exe"))) {
     throw "Falha ao copiar o YtDlpGui.exe para a pasta de distribuição."
 }
+# Garantia extra: o ícone da janela precisa estar ao lado do .exe.
+if (-not (Test-Path (Join-Path $pastaDist "icon.ico"))) {
+    Copy-Item (Join-Path $pastaProjeto "icon.ico") $pastaDist -Force
+}
+
 if (-not (Test-Path (Join-Path $pastaDist "Assets"))) {
     Write-Host "Aviso: a pasta Assets não foi encontrada na publicação — os ícones das telas podem não aparecer." -ForegroundColor Yellow
 }
