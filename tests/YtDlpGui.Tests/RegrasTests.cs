@@ -112,6 +112,11 @@ public sealed class RegrasTests
     [InlineData("FirefoxURL-308046B0AF4A39CB", "firefox")]
     [InlineData("BraveHTML", "brave")]
     [InlineData("IE.HTTP", null)]
+    // Linux (xdg-settings)
+    [InlineData("google-chrome.desktop", "chrome")]
+    [InlineData("chromium-browser.desktop", "chromium")]
+    [InlineData("firefox.desktop", "firefox")]
+    [InlineData("microsoft-edge.desktop", "edge")]
     public void Navegador_padrao_pelo_registro(string progId, string? esperado) =>
         Assert.Equal(esperado, RegrasDoDownload.NavegadorPeloProgId(progId));
 

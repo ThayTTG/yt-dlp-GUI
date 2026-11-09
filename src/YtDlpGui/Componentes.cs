@@ -14,12 +14,13 @@ namespace YtDlpGui
 {
     /// <summary>Um programa auxiliar que o yt-dlp usa por baixo dos panos.</summary>
     public sealed record Componente(
-        string Arquivo,        // nome do .exe (ex.: "ffmpeg.exe")
+        string Arquivo,        // nome do executável (ex.: "ffmpeg.exe" no Windows, "ffmpeg" no Linux)
         string Nome,           // nome amigável (ex.: "FFmpeg")
         string Para,           // para que serve, em uma frase
-        string UrlZip,         // pacote oficial
+        string UrlZip,         // pacote oficial (.zip, ou .tar.xz no FFmpeg do Linux)
         string UrlHash,        // arquivo com o SHA-256 publicado pelo próprio projeto
-        string CaminhoNoZip);  // final do caminho do .exe dentro do zip
+        string CaminhoNoZip,   // final do caminho do executável dentro do pacote
+        string? NomeNoHash = null); // quando o arquivo de hashes lista vários pacotes, o nome deste
 
     /// <summary>
     /// Garante que os programas auxiliares do yt-dlp estejam na pasta do app:
@@ -28,21 +29,32 @@ namespace YtDlpGui
     ///     o YouTube entrega poucos formatos (ou nenhum) e aparece o erro
     ///     "Requested format is not available".
     /// Os pacotes vêm dos sites oficiais e só são usados depois de conferir o SHA-256
-    /// publicado pelo próprio projeto. O yt-dlp.exe continua sendo cuidado pelo AutoReparo.
+    /// publicado pelo próprio projeto. O yt-dlp continua sendo cuidado pelo AutoReparo.
     /// </summary>
     public static class Componentes
     {
-        public static readonly Componente Ffmpeg = new(
-            "ffmpeg.exe", "FFmpeg", "junta vídeo e áudio e converte para MP3",
-            "https://www.gyan.dev/ffmpeg/builds/ffmpeg-release-essentials.zip",
-            "https://www.gyan.dev/ffmpeg/builds/ffmpeg-release-essentials.zip.sha256",
-            "/bin/ffmpeg.exe");
+        // Windows: FFmpeg "essentials" do gyan.dev (o mesmo do pacote de lançamento).
+        // Linux: a build do próprio projeto yt-dlp (yt-dlp/FFmpeg-Builds), em .tar.xz.
+        public static readonly Componente Ffmpeg = Plataforma.EhWindows
+            ? new("ffmpeg.exe", "FFmpeg", "junta vídeo e áudio e converte para MP3",
+                "https://www.gyan.dev/ffmpeg/builds/ffmpeg-release-essentials.zip",
+                "https://www.gyan.dev/ffmpeg/builds/ffmpeg-release-essentials.zip.sha256",
+                "/bin/ffmpeg.exe")
+            : new("ffmpeg", "FFmpeg", "junta vídeo e áudio e converte para MP3",
+                "https://github.com/yt-dlp/FFmpeg-Builds/releases/download/latest/ffmpeg-master-latest-linux64-gpl.tar.xz",
+                "https://github.com/yt-dlp/FFmpeg-Builds/releases/download/latest/checksums.sha256",
+                "/bin/ffmpeg",
+                NomeNoHash: "ffmpeg-master-latest-linux64-gpl.tar.xz");
 
-        public static readonly Componente Deno = new(
-            "deno.exe", "Deno", "resolve os desafios do YouTube",
-            "https://github.com/denoland/deno/releases/latest/download/deno-x86_64-pc-windows-msvc.zip",
-            "https://github.com/denoland/deno/releases/latest/download/deno-x86_64-pc-windows-msvc.zip.sha256sum",
-            "deno.exe");
+        public static readonly Componente Deno = Plataforma.EhWindows
+            ? new("deno.exe", "Deno", "resolve os desafios do YouTube",
+                "https://github.com/denoland/deno/releases/latest/download/deno-x86_64-pc-windows-msvc.zip",
+                "https://github.com/denoland/deno/releases/latest/download/deno-x86_64-pc-windows-msvc.zip.sha256sum",
+                "deno.exe")
+            : new("deno", "Deno", "resolve os desafios do YouTube",
+                "https://github.com/denoland/deno/releases/latest/download/deno-x86_64-unknown-linux-gnu.zip",
+                "https://github.com/denoland/deno/releases/latest/download/deno-x86_64-unknown-linux-gnu.zip.sha256sum",
+                "deno");
 
         public static readonly IReadOnlyList<Componente> Todos = new[] { Ffmpeg, Deno };
 
@@ -56,7 +68,10 @@ namespace YtDlpGui
         /// <summary>Plano B quando a pasta do programa é protegida (ex.: Arquivos de Programas).</summary>
         public static string PastaAlternativa => Path.Combine(AutoReparo.PastaGravavel(), "componentes");
 
-        /// <summary>Caminho do componente instalado, ou null se ele não estiver em nenhuma das duas pastas.</summary>
+        /// <summary>
+        /// Caminho do componente instalado, ou null se ele não estiver em nenhuma das duas pastas.
+        /// No Linux também vale o que já estiver instalado no sistema (ex.: "sudo apt install ffmpeg").
+        /// </summary>
         public static string? Localizar(Componente c)
         {
             foreach (string pasta in new[] { PastaDoApp, PastaAlternativa })
@@ -65,11 +80,15 @@ namespace YtDlpGui
                 try
                 {
                     if (File.Exists(caminho) && new FileInfo(caminho).Length >= TamanhoMinimo)
+                    {
+                        Plataforma.GarantirExecutavel(caminho);
                         return caminho;
+                    }
                 }
                 catch { }
             }
-            return null;
+
+            return Plataforma.EhWindows ? null : Plataforma.ProcurarNoPath(c.Arquivo);
         }
 
         public static bool Instalado(Componente c) => Localizar(c) is not null;
@@ -105,10 +124,29 @@ namespace YtDlpGui
             psi.Environment["PATH"] = MontarPath(pastas, pathAtual);
         }
 
-        /// <summary>Primeiro hash SHA-256 (64 dígitos hexadecimais) de um arquivo de conferência.</summary>
-        public static string? ExtrairHash(string conteudo)
+        /// <summary>
+        /// Hash SHA-256 (64 dígitos hexadecimais) de um arquivo de conferência. Com nomeArquivo,
+        /// procura a linha daquele pacote (arquivos como o checksums.sha256 listam vários);
+        /// sem ele, devolve o primeiro hash encontrado.
+        /// </summary>
+        public static string? ExtrairHash(string conteudo, string? nomeArquivo = null)
         {
-            var m = HashHex.Match(conteudo ?? "");
+            conteudo ??= "";
+            if (nomeArquivo is not null)
+            {
+                foreach (string linha in conteudo.Replace("\r", "").Split('\n'))
+                {
+                    string[] partes = linha.Split(new[] { ' ', '\t' }, StringSplitOptions.RemoveEmptyEntries);
+                    if (partes.Length >= 2 && partes[^1].TrimStart('*') == nomeArquivo)
+                    {
+                        var h = HashHex.Match(partes[0]);
+                        if (h.Success) return h.Value.ToUpperInvariant();
+                    }
+                }
+                return null;
+            }
+
+            var m = HashHex.Match(conteudo);
             return m.Success ? m.Value.ToUpperInvariant() : null;
         }
 
@@ -138,7 +176,8 @@ namespace YtDlpGui
         {
             string pasta = PastaDeInstalacao();
             string destino = Path.Combine(pasta, c.Arquivo);
-            string zipTemp = Path.Combine(Path.GetTempPath(), $"ytdlpgui-{c.Nome.ToLowerInvariant()}-{Guid.NewGuid():N}.zip");
+            string zipTemp = Path.Combine(Path.GetTempPath(), $"ytdlpgui-{c.Nome.ToLowerInvariant()}-{Guid.NewGuid():N}" +
+                (c.UrlZip.EndsWith(".tar.xz", StringComparison.OrdinalIgnoreCase) ? ".tar.xz" : ".zip"));
             string exeTemp = destino + ".baixando";
 
             try
@@ -147,7 +186,7 @@ namespace YtDlpGui
                 http.DefaultRequestHeaders.UserAgent.ParseAdd("YtDlpGui-Componentes");
 
                 GerenciadorLog.Atividade($"Componentes: baixando o hash oficial do {c.Nome}...");
-                string? hashEsperado = ExtrairHash(await http.GetStringAsync(c.UrlHash, cancelamento));
+                string? hashEsperado = ExtrairHash(await http.GetStringAsync(c.UrlHash, cancelamento), c.NomeNoHash);
                 if (hashEsperado is null)
                     return (false, $"Não consegui obter o hash oficial do {c.Nome} para conferir o download.");
 
@@ -194,6 +233,13 @@ namespace YtDlpGui
                     return (false, $"O pacote do {c.Nome} não passou na verificação de integridade e foi descartado.");
                 }
 
+                if (c.UrlZip.EndsWith(".tar.xz", StringComparison.OrdinalIgnoreCase))
+                {
+                    var (extraiu, erroTar) = await ExtrairDoTarXzAsync(zipTemp, c.CaminhoNoZip, exeTemp, cancelamento);
+                    if (!extraiu)
+                        return (false, erroTar);
+                }
+                else
                 using (var zip = ZipFile.OpenRead(zipTemp))
                 {
                     ZipArchiveEntry? entrada = null;
@@ -212,6 +258,7 @@ namespace YtDlpGui
                 }
 
                 File.Move(exeTemp, destino, overwrite: true);
+                Plataforma.GarantirExecutavel(destino);
                 GerenciadorLog.Reparo($"{c.Nome} instalado e verificado (SHA-256) em: {destino}");
                 return (true, $"{c.Nome} instalado.");
             }
@@ -255,6 +302,53 @@ namespace YtDlpGui
             string linha = saida.Replace("\r", "").Split('\n', StringSplitOptions.RemoveEmptyEntries)[0].Trim();
             var m = Regex.Match(linha, @"^(?:ffmpeg version|deno)\s+(\S+)", RegexOptions.IgnoreCase);
             return m.Success ? m.Groups[1].Value : linha;
+        }
+
+        /// <summary>
+        /// Linux: o .NET não abre .tar.xz, então quem extrai é o "tar" do próprio sistema
+        /// (presente em praticamente toda distribuição). Só o executável pedido sai do pacote.
+        /// </summary>
+        private static async Task<(bool, string)> ExtrairDoTarXzAsync(string pacote, string finalDoCaminho,
+            string destino, CancellationToken cancelamento)
+        {
+            string pastaTemp = Path.Combine(Path.GetTempPath(), "ytdlpgui-tar-" + Guid.NewGuid().ToString("N"));
+            try
+            {
+                Directory.CreateDirectory(pastaTemp);
+                var psi = new ProcessStartInfo("tar") { UseShellExecute = false, CreateNoWindow = true, RedirectStandardError = true };
+                psi.ArgumentList.Add("-xJf");
+                psi.ArgumentList.Add(pacote);
+                psi.ArgumentList.Add("-C");
+                psi.ArgumentList.Add(pastaTemp);
+                psi.ArgumentList.Add("--wildcards");
+                psi.ArgumentList.Add("*" + finalDoCaminho);
+
+                using var tar = Process.Start(psi);
+                if (tar is null)
+                    return (false, "Não consegui abrir o pacote (o programa \"tar\" não foi encontrado).");
+                string erro = await tar.StandardError.ReadToEndAsync(cancelamento);
+                await tar.WaitForExitAsync(cancelamento);
+                if (tar.ExitCode != 0)
+                    return (false, "Não consegui abrir o pacote baixado (" + erro.Trim() + ").");
+
+                string? achado = Directory.EnumerateFiles(pastaTemp, Path.GetFileName(finalDoCaminho), SearchOption.AllDirectories)
+                    .Where(f => f.Replace('\\', '/').EndsWith(finalDoCaminho, StringComparison.Ordinal))
+                    .OrderBy(f => f.Length)
+                    .FirstOrDefault();
+                if (achado is null)
+                    return (false, "Não encontrei o " + Path.GetFileName(finalDoCaminho) + " dentro do pacote baixado.");
+
+                File.Move(achado, destino, overwrite: true);
+                return (true, "");
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                return (false, "Não consegui abrir o pacote baixado (" + ex.Message + ").");
+            }
+            finally
+            {
+                try { Directory.Delete(pastaTemp, recursive: true); } catch { }
+            }
         }
 
         private static void TentarApagar(string caminho)

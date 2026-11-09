@@ -5,7 +5,7 @@ namespace YtDlpGui
     /// <summary>
     /// Notificações do Windows ao terminar (ou falhar) um download, para o aluno poder minimizar
     /// a janela e ainda saber quando acabou. No Windows 10/11 aparecem como "toast" (o mesmo
-    /// lugar onde os balões antigos já apareciam). Fora do Windows, não fazem nada.
+    /// lugar onde os balões antigos já apareciam). No Linux, pelo notify-send (quando existe).
     /// Uma notificação nunca derruba o programa: se falhar, só fica no log.
     /// </summary>
     public static class Notificacoes
@@ -19,6 +19,8 @@ namespace YtDlpGui
                     .AddText(titulo)
                     .AddText(mensagem)
                     .Show();
+#else
+                Plataforma.NotificarNoLinux(titulo, mensagem, erro);
 #endif
             }
             catch (Exception ex)

@@ -150,8 +150,8 @@ namespace YtDlpGui
             var resultados = new List<ResultadoVerificacao>
             {
                 Tentar("Pasta de logs", VerificarPastaDeLogs),
-                Tentar("yt-dlp.exe", () => VerificarExecutavel("yt-dlp.exe", caminhoYtDlp, TamanhoMinimoYtDlp, obrigatorio: true)),
-                Tentar("ffmpeg.exe", () => VerificarExecutavel("ffmpeg.exe", caminhoFfmpeg, TamanhoMinimoFfmpeg, obrigatorio: false)),
+                Tentar(Plataforma.YtDlp, () => VerificarExecutavel(Plataforma.YtDlp, caminhoYtDlp, TamanhoMinimoYtDlp, obrigatorio: true)),
+                Tentar(Plataforma.Ffmpeg, () => VerificarExecutavel(Plataforma.Ffmpeg, caminhoFfmpeg, TamanhoMinimoFfmpeg, obrigatorio: false)),
                 Tentar("Histórico", VerificarHistorico),
                 Tentar("Filtro de conteúdo", VerificarFiltro)
             };
@@ -235,23 +235,37 @@ namespace YtDlpGui
             }
 
             long tamanho = new FileInfo(caminho).Length;
+
+            // No Linux, um ffmpeg instalado no sistema (apt, dnf...) é pequeno de propósito: ele usa
+            // as bibliotecas do sistema. O tamanho mínimo só vale para as cópias da pasta do app.
+            bool copiaDoApp = caminho.StartsWith(Componentes.PastaDoApp, StringComparison.Ordinal) ||
+                              caminho.StartsWith(Componentes.PastaAlternativa, StringComparison.Ordinal);
+            if (!Plataforma.EhWindows && !copiaDoApp)
+                tamanhoMinimo = 0;
+
             if (tamanho < tamanhoMinimo)
             {
                 return new ResultadoVerificacao(nome, SituacaoVerificacao.Aviso,
                     "o arquivo existe mas está pequeno demais (" + tamanho + " bytes); pode estar corrompido ou incompleto");
             }
 
-            // Todo executável do Windows começa com as letras "MZ".
+            // Todo executável do Windows começa com as letras "MZ"; os do Linux, com 0x7F "ELF".
             using (var fs = new FileStream(caminho, FileMode.Open, FileAccess.Read, FileShare.ReadWrite))
             {
-                int a = fs.ReadByte();
-                int b = fs.ReadByte();
-                if (a != 'M' || b != 'Z')
+                var inicio = new byte[4];
+                int lidos = fs.Read(inicio, 0, 4);
+                bool valido = Plataforma.EhWindows
+                    ? lidos >= 2 && inicio[0] == 'M' && inicio[1] == 'Z'
+                    : lidos == 4 && inicio[0] == 0x7F && inicio[1] == 'E' && inicio[2] == 'L' && inicio[3] == 'F';
+                if (!valido)
                 {
                     return new ResultadoVerificacao(nome, SituacaoVerificacao.Aviso,
-                        "o arquivo não parece um executável válido do Windows (pode estar corrompido)");
+                        "o arquivo não parece um executável válido " + (Plataforma.EhWindows ? "do Windows" : "do Linux") +
+                        " (pode estar corrompido)");
                 }
             }
+
+            Plataforma.GarantirExecutavel(caminho);
 
             return new ResultadoVerificacao(nome, SituacaoVerificacao.Ok, "encontrado (" + (tamanho / 1024 / 1024) + " MB)");
         }
@@ -301,12 +315,14 @@ namespace YtDlpGui
 
                 GerenciadorLog.Atividade("Autorreparo: baixando lista de hashes oficiais do yt-dlp...");
                 string sums = await http.GetStringAsync(baseUrl + "SHA2-256SUMS", cancelamento);
-                string? hashEsperado = ExtrairHash(sums, "yt-dlp.exe");
+                // Windows: yt-dlp.exe. Linux: o executável autônomo "yt-dlp_linux", salvo como "yt-dlp".
+                string nomeNoGitHub = Plataforma.YtDlpNoGitHub;
+                string? hashEsperado = ExtrairHash(sums, nomeNoGitHub);
                 if (hashEsperado is null)
-                    return (false, "Não consegui obter o hash oficial do yt-dlp.exe para conferir o download.");
+                    return (false, "Não consegui obter o hash oficial do yt-dlp para conferir o download.");
 
-                GerenciadorLog.Atividade("Autorreparo: baixando yt-dlp.exe...");
-                using (var resposta = await http.GetAsync(baseUrl + "yt-dlp.exe", HttpCompletionOption.ResponseHeadersRead, cancelamento))
+                GerenciadorLog.Atividade("Autorreparo: baixando " + nomeNoGitHub + "...");
+                using (var resposta = await http.GetAsync(baseUrl + nomeNoGitHub, HttpCompletionOption.ResponseHeadersRead, cancelamento))
                 {
                     resposta.EnsureSuccessStatusCode();
                     using var origem = await resposta.Content.ReadAsStreamAsync(cancelamento);
@@ -323,7 +339,7 @@ namespace YtDlpGui
                 if (!string.Equals(hashReal, hashEsperado, StringComparison.OrdinalIgnoreCase))
                 {
                     TentarApagar(temporario);
-                    GerenciadorLog.Erro("Autorreparo: o hash do yt-dlp.exe baixado NÃO confere (esperado " + hashEsperado + ", obtido " + hashReal + "). Arquivo descartado.");
+                    GerenciadorLog.Erro("Autorreparo: o hash do yt-dlp baixado NÃO confere (esperado " + hashEsperado + ", obtido " + hashReal + "). Arquivo descartado.");
                     return (false, "O arquivo baixado não passou na verificação de integridade e foi descartado.");
                 }
 
@@ -331,20 +347,21 @@ namespace YtDlpGui
                     File.Move(destino, destino + ".corrompido", overwrite: true);
 
                 File.Move(temporario, destino);
+                Plataforma.GarantirExecutavel(destino);
 
-                GerenciadorLog.Reparo("yt-dlp.exe baixado do GitHub oficial e verificado (SHA-256) em: " + destino);
-                return (true, "yt-dlp.exe instalado com sucesso.");
+                GerenciadorLog.Reparo("yt-dlp baixado do GitHub oficial e verificado (SHA-256) em: " + destino);
+                return (true, "yt-dlp instalado com sucesso.");
             }
             catch (OperationCanceledException)
             {
                 TentarApagar(temporario);
-                return (false, "O download do yt-dlp.exe foi interrompido ou demorou demais.");
+                return (false, "O download do yt-dlp foi interrompido ou demorou demais.");
             }
             catch (Exception ex)
             {
                 TentarApagar(temporario);
-                GerenciadorLog.Erro("Autorreparo: falha ao baixar o yt-dlp.exe", ex);
-                return (false, "Não foi possível baixar o yt-dlp.exe agora (" + ex.Message + ").");
+                GerenciadorLog.Erro("Autorreparo: falha ao baixar o yt-dlp", ex);
+                return (false, "Não foi possível baixar o yt-dlp agora (" + ex.Message + ").");
             }
         }
 

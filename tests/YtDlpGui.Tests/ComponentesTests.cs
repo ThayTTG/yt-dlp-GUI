@@ -1,3 +1,4 @@
+using System;
 using System.IO;
 using Xunit;
 using YtDlpGui;
@@ -43,9 +44,52 @@ public class ComponentesTests
     [Fact]
     public void ComponentesUsamOsSitesOficiais()
     {
-        Assert.StartsWith("https://www.gyan.dev/", Componentes.Ffmpeg.UrlZip);
+        Assert.StartsWith(OperatingSystem.IsWindows() ? "https://www.gyan.dev/" : "https://github.com/yt-dlp/FFmpeg-Builds/",
+            Componentes.Ffmpeg.UrlZip);
         Assert.StartsWith("https://github.com/denoland/deno/", Componentes.Deno.UrlZip);
         Assert.All(Componentes.Todos, c => Assert.StartsWith("https://", c.UrlHash));
+    }
+
+    [Fact]
+    public void NomesDosExecutaveisSeguemOSistema()
+    {
+        string fim = OperatingSystem.IsWindows() ? ".exe" : "";
+        Assert.Equal("yt-dlp" + fim, Plataforma.YtDlp);
+        Assert.Equal("ffmpeg" + fim, Componentes.Ffmpeg.Arquivo);
+        Assert.Equal("deno" + fim, Componentes.Deno.Arquivo);
+        Assert.Equal(OperatingSystem.IsWindows() ? "yt-dlp.exe" : "yt-dlp_linux", Plataforma.YtDlpNoGitHub);
+    }
+
+    [Fact]
+    public void AchaOHashDoPacoteCertoNumaListaComVarios()
+    {
+        string lista =
+            Hash + "  ffmpeg-master-latest-win64-gpl.zip\n" +
+            "fedcba9876543210fedcba9876543210fedcba9876543210fedcba9876543210  ffmpeg-master-latest-linux64-gpl.tar.xz\n";
+        Assert.Equal("FEDCBA9876543210FEDCBA9876543210FEDCBA9876543210FEDCBA9876543210",
+            Componentes.ExtrairHash(lista, "ffmpeg-master-latest-linux64-gpl.tar.xz"));
+        Assert.Null(Componentes.ExtrairHash(lista, "nao-existe.zip"));
+    }
+
+    [Fact]
+    public void ProcuraProgramasNoPath()
+    {
+        string pasta = Path.Combine(Path.GetTempPath(), "ytdlpgui-path-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(pasta);
+        string nome = "programa-de-teste" + (OperatingSystem.IsWindows() ? ".exe" : "");
+        File.WriteAllText(Path.Combine(pasta, nome), "x");
+        string? antigo = Environment.GetEnvironmentVariable("PATH");
+        try
+        {
+            Environment.SetEnvironmentVariable("PATH", pasta + Path.PathSeparator + antigo);
+            Assert.Equal(Path.Combine(pasta, nome), Plataforma.ProcurarNoPath(nome));
+            Assert.Null(Plataforma.ProcurarNoPath("nao-existe-mesmo-123"));
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable("PATH", antigo);
+            Directory.Delete(pasta, recursive: true);
+        }
     }
 
     [Theory]

@@ -214,7 +214,7 @@ namespace YtDlpGui
 
             if (erroBruto.Contains("ffmpeg"))
             {
-                return "Houve um problema relacionado ao ffmpeg. Verifique se o ffmpeg.exe " +
+                return $"Houve um problema relacionado ao ffmpeg. Verifique se o {Plataforma.Ffmpeg} " +
                        "está na mesma pasta do programa.";
             }
 
@@ -327,13 +327,14 @@ namespace YtDlpGui
         }
 
         /// <summary>
-        /// Descobre o navegador padrão do Windows para links https (Chrome, Edge, Firefox...),
+        /// Descobre o navegador padrão (Windows: registro; Linux: xdg-settings) para links https,
         /// no formato que o yt-dlp entende. Devolve null se não conseguir identificar.
         /// </summary>
         public static string? DetectarNavegadorPadrao()
         {
+            // Linux: "xdg-settings get default-web-browser" (ex.: "firefox.desktop").
             if (!OperatingSystem.IsWindows())
-                return null;
+                return NavegadorPeloProgId(Plataforma.NavegadorPadraoNoLinux());
 
             try
             {
@@ -349,13 +350,17 @@ namespace YtDlpGui
             return null;
         }
 
-        /// <summary>Converte o ProgId do registro ("ChromeHTML", "MSEdgeHTM"...) no nome do yt-dlp.</summary>
+        /// <summary>
+        /// Converte o ProgId do registro ("ChromeHTML", "MSEdgeHTM"...) ou o atalho do Linux
+        /// ("google-chrome.desktop", "firefox.desktop"...) no nome do yt-dlp.
+        /// </summary>
         public static string? NavegadorPeloProgId(string? progId)
         {
             if (string.IsNullOrEmpty(progId))
                 return null;
 
             string p = progId.ToLowerInvariant();
+            if (p.Contains("chromium")) return "chromium";
             if (p.Contains("chrome")) return "chrome";
             if (p.Contains("edge")) return "edge";
             if (p.Contains("firefox")) return "firefox";

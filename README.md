@@ -8,6 +8,9 @@ NokyLabs, o mesmo visual do launcher e do ValReport), na cor do app: **menta** `
 A lógica é exatamente a da versão 2: só a "casca" mudou. Barra lateral de navegação,
 telas separadas por função e nenhuma saída bruta do yt-dlp na tela.
 
+Desde a **versão 3.1** também roda no **Linux** (x64), com o mesmo visual e o mesmo
+comportamento. O que muda entre os sistemas fica todo em `Plataforma.cs` (ver a seção 10b).
+
 ## Estrutura dos arquivos
 
 ```
@@ -376,6 +379,23 @@ cd src\YtDlpGui
 
 > O `dotnet publish` gera um único `YtDlpGui.exe` (com o .NET e o Avalonia dentro) e copia o
 > `icon.ico` para o lado dele. Não há mais pasta `Assets`: os ícones vão dentro do programa.
+
+## 10b. Linux (desde a 3.1)
+
+O mesmo código roda no Linux. As diferenças ficam em `Plataforma.cs`:
+
+| | Windows | Linux |
+|---|---|---|
+| Programas auxiliares | `yt-dlp.exe`, `ffmpeg.exe`, `deno.exe` | `yt-dlp`, `ffmpeg`, `deno` (com permissão de execução conferida pelo app) |
+| yt-dlp oficial (reparo) | `yt-dlp.exe` | `yt-dlp_linux`, salvo como `yt-dlp` |
+| FFmpeg (download automático) | gyan.dev "essentials" (.zip) | yt-dlp/FFmpeg-Builds `linux64-gpl` (.tar.xz, aberto pelo `tar` do sistema) |
+| FFmpeg/Deno já instalados no sistema | não usa | usa os do PATH (ex.: `sudo apt install ffmpeg`) |
+| Navegador padrão (cookies) | registro do Windows | `xdg-settings get default-web-browser` |
+| Notificações | toast do Windows | `notify-send` (se existir) |
+
+Para rodar a partir do código: `dotnet run --project src/YtDlpGui`. O pacote oficial
+(`YtDlpGui-linux-x64.zip`) é gerado pelo workflow de lançamento e traz o `YtDlpGui` e o
+`yt-dlp`; o FFmpeg e o Deno o app baixa na primeira abertura (conferindo o SHA-256).
 
 ## 11. Possíveis melhorias futuras (fora do escopo atual)
 

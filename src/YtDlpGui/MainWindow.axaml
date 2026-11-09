@@ -481,7 +481,7 @@
                 <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto,Auto">
                   <TextBlock Classes="h3" Text="FFmpeg" />
                   <TextBlock x:Name="TxtVersaoFfmpeg" Grid.Column="1" Classes="muted num" Text="—" HorizontalAlignment="Right" />
-                  <TextBlock Grid.Row="1" Grid.ColumnSpan="2" Classes="muted" Text="Desenvolvedores do FFmpeg · LGPL/GPL · build para Windows de Gyan Doshi (gyan.dev)" Margin="0,2,0,0" TextWrapping="Wrap" />
+                  <TextBlock x:Name="TxtAutorFfmpeg" Grid.Row="1" Grid.ColumnSpan="2" Classes="muted" Text="Desenvolvedores do FFmpeg · LGPL/GPL · build para Windows de Gyan Doshi (gyan.dev)" Margin="0,2,0,0" TextWrapping="Wrap" />
                   <TextBlock Grid.Row="2" Classes="secondary" Text="Junta o vídeo e o áudio num MP4 de alta qualidade e converte o áudio para MP3." Margin="0,6,12,0" TextWrapping="Wrap" />
                   <Button x:Name="LinkFfmpeg" Grid.Row="2" Grid.Column="1" Classes="link" Tag="https://ffmpeg.org"
                           VerticalAlignment="Bottom" ToolTip.Tip="https://ffmpeg.org">
@@ -535,7 +535,7 @@
                   </Button>
                 </Grid>
               </Border>
-              <Border Classes="secao" Padding="16,12">
+              <Border x:Name="CartaoToolkit" Classes="secao" Padding="16,12">
                 <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto,Auto">
                   <TextBlock Classes="h3" Text="Windows Community Toolkit" />
                   <TextBlock Grid.Row="1" Grid.ColumnSpan="2" Classes="muted" Text="Microsoft e comunidade .NET Foundation · licença MIT" Margin="0,2,0,0" TextWrapping="Wrap" />

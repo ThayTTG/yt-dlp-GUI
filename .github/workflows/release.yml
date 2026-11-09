@@ -6,9 +6,11 @@ name: Build e Release
 #   • enviar qualquer commit para o branch "release"  → a tag vem do <Version> do .csproj
 #   • ou enviar uma tag no formato v1.2.3
 #
-# Usa o próprio publicar.ps1: gera o YtDlpGui.exe completo (não precisa de .NET)
-# e já inclui o yt-dlp.exe, o ffmpeg.exe e o deno.exe. O arquivo final tem nome fixo
-# (YtDlpGui-win-x64.zip), usado pelo site e pelo NokyLabs Launcher.
+# Gera dois pacotes, com nomes fixos (usados pelo site e pelo NokyLabs Launcher):
+#   • YtDlpGui-win-x64.zip   → pelo publicar.ps1: YtDlpGui.exe + yt-dlp.exe, ffmpeg.exe e deno.exe
+#   • YtDlpGui-linux-x64.zip → YtDlpGui + yt-dlp. O FFmpeg e o Deno o próprio app baixa na
+#     primeira abertura (ou usa os do sistema, se já estiverem instalados), o que deixa o
+#     pacote do Linux bem menor.
 on:
   push:
     branches:
@@ -21,7 +23,53 @@ permissions:
   contents: write
 
 jobs:
+  linux:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          submodules: true   # lib/NokyLabs.UI (o Kit NokyLabs)
+
+      - uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: "8.0.x"
+
+      - name: Testes (Linux)
+        run: dotnet test tests/YtDlpGui.Tests -c Release
+
+      - name: Publicar (linux-x64, arquivo único)
+        run: >
+          dotnet publish src/YtDlpGui/YtDlpGui.csproj -c Release -r linux-x64 --self-contained true
+          -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:DebugType=none
+          -o pacote-linux
+
+      - name: Incluir o yt-dlp oficial (conferido pelo SHA-256)
+        run: |
+          base=https://github.com/yt-dlp/yt-dlp/releases/latest/download
+          curl -fsSL "$base/SHA2-256SUMS" -o SHA2-256SUMS
+          curl -fsSL "$base/yt-dlp_linux" -o pacote-linux/yt-dlp
+          esperado=$(awk '$2 == "yt-dlp_linux" {print $1}' SHA2-256SUMS)
+          real=$(sha256sum pacote-linux/yt-dlp | cut -d' ' -f1)
+          [ -n "$esperado" ] && [ "$esperado" = "$real" ] || { echo "::error::O yt-dlp_linux não passou na conferência do SHA-256."; exit 1; }
+
+      - name: Montar o YtDlpGui-linux-x64.zip
+        run: |
+          cp src/YtDlpGui/filtro-conteudo.exemplo.json pacote-linux/ 2>/dev/null || true
+          chmod +x pacote-linux/YtDlpGui pacote-linux/yt-dlp
+          for f in YtDlpGui yt-dlp icon.ico; do [ -f "pacote-linux/$f" ] || { echo "::error::Faltou o $f no pacote."; exit 1; }; done
+          # O zip guarda a permissão de execução (o launcher também confere ao instalar).
+          cd pacote-linux && zip -9 -r ../YtDlpGui-linux-x64.zip . && cd ..
+          sha256sum YtDlpGui-linux-x64.zip | cut -d' ' -f1 > YtDlpGui-linux-x64.zip.sha256
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: linux
+          path: |
+            YtDlpGui-linux-x64.zip
+            YtDlpGui-linux-x64.zip.sha256
+
   build-and-release:
+    needs: linux
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v5
@@ -76,6 +124,10 @@ jobs:
           Move-Item src\YtDlpGui\YtDlpGui-Portatil.zip YtDlpGui-win-x64.zip
           (Get-FileHash YtDlpGui-win-x64.zip -Algorithm SHA256).Hash | Out-File -Encoding ascii YtDlpGui-win-x64.zip.sha256
 
+      - uses: actions/download-artifact@v4
+        with:
+          name: linux
+
       - uses: softprops/action-gh-release@v3
         with:
           tag_name: ${{ steps.versao.outputs.tag }}
@@ -85,6 +137,8 @@ jobs:
           files: |
             YtDlpGui-win-x64.zip
             YtDlpGui-win-x64.zip.sha256
+            YtDlpGui-linux-x64.zip
+            YtDlpGui-linux-x64.zip.sha256
           body: |
             ## YT-DLP GUI ${{ steps.versao.outputs.tag }}
 
@@ -95,12 +149,17 @@ jobs:
 
             Baixe vídeos e áudios colando um link, sem abrir o terminal. Feito para usar com a turma.
 
-            **Como instalar**
+            **Como instalar no Windows**
             1. Baixe o `YtDlpGui-win-x64.zip` abaixo (ou instale pelo NokyLabs Launcher)
             2. Extraia a pasta inteira e abra o `YtDlpGui.exe`
             3. Se aparecer o aviso azul do Windows, clique em "Mais informações" › "Executar assim mesmo"
 
             Já vem com o yt-dlp, o ffmpeg e o Deno. Não precisa instalar o .NET.
+
+            **Como instalar no Linux** (64 bits)
+            1. Baixe o `YtDlpGui-linux-x64.zip` abaixo (ou instale pelo NokyLabs Launcher)
+            2. Extraia numa pasta sua (ex.: `~/Apps/YtDlpGui`) e rode `./YtDlpGui`
+            3. Na primeira abertura ele baixa sozinho o FFmpeg e o Deno (ou usa os do sistema, se já tiver)
 
             Mais detalhes: https://thayttg.github.io/nokylabs/#ytdlp-gui
 

@@ -91,7 +91,7 @@ namespace YtDlpGui
             LigarEventos();
 
             string pastaApp = AppDomain.CurrentDomain.BaseDirectory;
-            _ytDlpPath = Path.Combine(pastaApp, "yt-dlp.exe");
+            _ytDlpPath = Path.Combine(pastaApp, Plataforma.YtDlp);
 
             TxtPasta.Text = RegrasDoDownload.ObterPastaDownloadsPadrao();
             CmbNavegador.ItemsSource = RegrasDoDownload.Navegadores;
@@ -102,6 +102,14 @@ namespace YtDlpGui
             {
                 Creditos.Version = $"versão {versao.Major}.{versao.Minor}";
                 TxtSobreVersao.Text = $"Versão {versao.Major}.{versao.Minor}.{versao.Build}";
+            }
+
+            // No Linux, o FFmpeg vem da build do projeto yt-dlp (ou do sistema) e as notificações
+            // usam o notify-send: o crédito do Windows Community Toolkit não se aplica.
+            if (!Plataforma.EhWindows)
+            {
+                TxtAutorFfmpeg.Text = "Desenvolvedores do FFmpeg · LGPL/GPL · build do projeto yt-dlp (yt-dlp/FFmpeg-Builds)";
+                CartaoToolkit.IsVisible = false;
             }
 
             _timerSpinner.Tick += SpinnerTick;
@@ -421,7 +429,7 @@ namespace YtDlpGui
             {
                 // Se o yt-dlp.exe sumiu, oferece o reparo automático antes de reclamar.
                 if (!File.Exists(_ytDlpPath))
-                    await OferecerBaixarYtDlpAsync("O yt-dlp.exe não foi encontrado na pasta do programa.");
+                    await OferecerBaixarYtDlpAsync($"O {Plataforma.YtDlp} não foi encontrado na pasta do programa.");
 
                 // Se os componentes ainda estão sendo baixados (primeira abertura), espera terminar.
                 if (_tarefaComponentes is { IsCompleted: false })
@@ -595,9 +603,9 @@ namespace YtDlpGui
             if (!File.Exists(_ytDlpPath))
             {
                 await Dialogo.MostrarAsync(this,
-                    $"Não foi possível encontrar o yt-dlp.exe em:\n{_ytDlpPath}\n\n" +
-                    "Coloque o arquivo yt-dlp.exe na mesma pasta deste programa.",
-                    "yt-dlp.exe não encontrado", TipoDialogo.Erro);
+                    $"Não foi possível encontrar o {Plataforma.YtDlp} em:\n{_ytDlpPath}\n\n" +
+                    $"Coloque o arquivo {Plataforma.YtDlp} na mesma pasta deste programa.",
+                    $"{Plataforma.YtDlp} não encontrado", TipoDialogo.Erro);
                 return false;
             }
 
@@ -614,16 +622,16 @@ namespace YtDlpGui
                 if (exigeFfmpeg)
                 {
                     await Dialogo.MostrarAsync(this,
-                        "O ffmpeg.exe é obrigatório para baixar em MP3 e não foi possível baixá-lo agora.\n\n" +
-                        "Confira a conexão com a internet e tente de novo, ou coloque o ffmpeg.exe na mesma pasta deste programa.",
-                        "ffmpeg.exe não encontrado", TipoDialogo.Erro);
+                        $"O {Plataforma.Ffmpeg} é obrigatório para baixar em MP3 e não foi possível baixá-lo agora.\n\n" +
+                        $"Confira a conexão com a internet e tente de novo, ou coloque o {Plataforma.Ffmpeg} na mesma pasta deste programa.",
+                        $"{Plataforma.Ffmpeg} não encontrado", TipoDialogo.Erro);
                     return false;
                 }
 
                 bool continuarSemFfmpeg = await Dialogo.PerguntarAsync(this,
-                    "O ffmpeg.exe não foi encontrado. Alguns vídeos podem baixar em qualidade " +
+                    $"O {Plataforma.Ffmpeg} não foi encontrado. Alguns vídeos podem baixar em qualidade " +
                     "reduzida sem ele. Deseja continuar mesmo assim?",
-                    "ffmpeg.exe não encontrado", TipoDialogo.Aviso);
+                    $"{Plataforma.Ffmpeg} não encontrado", TipoDialogo.Aviso);
 
                 if (!continuarSemFfmpeg)
                     return false;
@@ -776,7 +784,7 @@ namespace YtDlpGui
                         if (ehAtualizacao)
                             TxtAtualizarStatus.Text = "Falha ao atualizar.";
                         await OferecerBaixarYtDlpAsync(
-                            "Não foi possível iniciar o yt-dlp.exe: " + (_ultimoErro ?? "motivo desconhecido") +
+                            $"Não foi possível iniciar o {Plataforma.YtDlp}: " + (_ultimoErro ?? "motivo desconhecido") +
                             "\n\nO arquivo pode estar danificado ou ter sido bloqueado pelo antivírus.");
                         break;
 
@@ -898,7 +906,7 @@ namespace YtDlpGui
             }
             catch (System.ComponentModel.Win32Exception exWin32)
             {
-                GerenciadorLog.Erro("Não foi possível iniciar o yt-dlp.exe", exWin32);
+                GerenciadorLog.Erro($"Não foi possível iniciar o {Plataforma.YtDlp}", exWin32);
                 _ultimoErro = exWin32.Message;
                 return ResultadoExecucao.NaoIniciou;
             }
@@ -940,20 +948,20 @@ namespace YtDlpGui
 
             bool sim = await Dialogo.PerguntarAsync(this,
                 motivo + "\n\n" +
-                "Posso tentar baixar agora o yt-dlp.exe oficial? O arquivo vem do GitHub do projeto yt-dlp e só é " +
+                $"Posso tentar baixar agora o {Plataforma.YtDlp} oficial? O arquivo vem do GitHub do projeto yt-dlp e só é " +
                 "usado depois de passar na verificação de integridade (SHA-256).\n\n" +
                 "É preciso estar conectado à internet.",
-                "Reparar o yt-dlp.exe", TipoDialogo.Pergunta);
+                $"Reparar o {Plataforma.YtDlp}", TipoDialogo.Pergunta);
 
             if (!sim)
             {
-                GerenciadorLog.Atividade("O usuário recusou o reparo automático do yt-dlp.exe.");
+                GerenciadorLog.Atividade($"O usuário recusou o reparo automático do {Plataforma.YtDlp}.");
                 return;
             }
 
             DefinirEstadoDownloadEmAndamento(true);
             BtnCancelar.IsEnabled = false;
-            AtualizarStatus("Baixando o yt-dlp.exe oficial... aguarde.");
+            AtualizarStatus($"Baixando o {Plataforma.YtDlp} oficial... aguarde.");
 
             try
             {
@@ -961,7 +969,7 @@ namespace YtDlpGui
                 if (_fechada)
                     return;
 
-                AtualizarStatus(sucesso ? "yt-dlp.exe reparado!" : "Não foi possível reparar o yt-dlp.exe.");
+                AtualizarStatus(sucesso ? $"{Plataforma.YtDlp} reparado!" : $"Não foi possível reparar o {Plataforma.YtDlp}.");
                 await Dialogo.MostrarAsync(this, mensagem,
                     sucesso ? "Reparo concluído" : "Reparo não concluído",
                     sucesso ? TipoDialogo.Informacao : TipoDialogo.Aviso);
@@ -1269,8 +1277,8 @@ namespace YtDlpGui
 
             if (!File.Exists(_ytDlpPath))
             {
-                await Dialogo.MostrarAsync(this, $"Não foi possível encontrar o yt-dlp.exe em:\n{_ytDlpPath}",
-                    "yt-dlp.exe não encontrado", TipoDialogo.Erro);
+                await Dialogo.MostrarAsync(this, $"Não foi possível encontrar o {Plataforma.YtDlp} em:\n{_ytDlpPath}",
+                    $"{Plataforma.YtDlp} não encontrado", TipoDialogo.Erro);
                 return;
             }
 
@@ -1466,7 +1474,7 @@ namespace YtDlpGui
                 if (!File.Exists(_ytDlpPath))
                 {
                     // Em vez de só reclamar, oferece o reparo automático.
-                    await OferecerBaixarYtDlpAsync($"Não foi possível encontrar o yt-dlp.exe em:\n{_ytDlpPath}");
+                    await OferecerBaixarYtDlpAsync($"Não foi possível encontrar o {Plataforma.YtDlp} em:\n{_ytDlpPath}");
                     return;
                 }
 
@@ -1682,14 +1690,14 @@ namespace YtDlpGui
         {
             try
             {
-                var resultados = await Task.Run(() => AutoReparo.VerificarInicio(_ytDlpPath, FfmpegPath ?? Path.Combine(Componentes.PastaDoApp, "ffmpeg.exe")));
+                var resultados = await Task.Run(() => AutoReparo.VerificarInicio(_ytDlpPath, FfmpegPath ?? Path.Combine(Componentes.PastaDoApp, Plataforma.Ffmpeg)));
                 if (_fechada)
                     return;
 
                 int corrigidos = resultados.Count(r => r.Situacao == SituacaoVerificacao.Corrigido);
 
                 if (!File.Exists(_ytDlpPath))
-                    AtualizarStatus("yt-dlp.exe não encontrado.");
+                    AtualizarStatus($"{Plataforma.YtDlp} não encontrado.");
                 else if (corrigidos > 0)
                     AtualizarStatus("Autodiagnóstico: " + corrigidos + " problema(s) corrigido(s) automaticamente.");
 
@@ -1700,14 +1708,14 @@ namespace YtDlpGui
                         "Autodiagnóstico", TipoDialogo.Informacao);
                 }
 
-                var ytDlp = resultados.Find(r => r.Item == "yt-dlp.exe");
+                var ytDlp = resultados.Find(r => r.Item == Plataforma.YtDlp);
                 if (ytDlp is not null && !_ocupado &&
                     (ytDlp.Situacao == SituacaoVerificacao.Falha || ytDlp.Situacao == SituacaoVerificacao.Aviso))
                 {
                     _ocupado = true;
                     try
                     {
-                        await OferecerBaixarYtDlpAsync("Problema com o yt-dlp.exe: " + ytDlp.Detalhe + ".");
+                        await OferecerBaixarYtDlpAsync($"Problema com o {Plataforma.YtDlp}: " + ytDlp.Detalhe + ".");
                     }
                     finally
                     {
