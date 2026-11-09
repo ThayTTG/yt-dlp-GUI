@@ -51,25 +51,27 @@ git submodule update --init
 
 Para trazer uma versão nova do Kit: `git submodule update --remote lib/NokyLabs.UI`.
 
-## 1. Onde colocar o `yt-dlp.exe` e o `ffmpeg.exe`
+## 1. O `yt-dlp.exe`, o `ffmpeg.exe` e o `deno.exe`
 
-O aplicativo espera encontrar os dois executáveis na **mesma pasta** do
-`.exe` da aplicação (a pasta de saída da compilação, ex.:
-`bin\Debug\net8.0-windows\`, ou a pasta onde o programa for distribuído):
+O aplicativo usa três programas que ficam na **mesma pasta** do `.exe` (por exemplo
+`src\YtDlpGui\bin\Debug\net8.0-windows10.0.19041.0\` ao rodar com `dotnet run`):
 
-```csharp
-string pastaApp = AppDomain.CurrentDomain.BaseDirectory;
-_ytDlpPath = Path.Combine(pastaApp, "yt-dlp.exe");
-_ffmpegPath = Path.Combine(pastaApp, "ffmpeg.exe");
-```
+- **yt-dlp.exe**: quem baixa os vídeos (`https://github.com/yt-dlp/yt-dlp/releases`).
+- **ffmpeg.exe**: junta vídeo e áudio e converte para MP3 (`https://www.gyan.dev/ffmpeg/builds/`, build "essentials").
+- **deno.exe**: resolve os desafios em JavaScript do YouTube. Sem ele, muitos vídeos falham
+  com "Requested format is not available" (`https://github.com/denoland/deno/releases`).
 
-- **yt-dlp.exe**: `https://github.com/yt-dlp/yt-dlp/releases` (arquivo `yt-dlp.exe`)
-- **ffmpeg.exe**: `https://www.gyan.dev/ffmpeg/builds/` (build "essentials", pasta `bin`)
+**Não é preciso copiar nada à mão:** o pacote de lançamento já traz os três, e se o FFmpeg ou o
+Deno estiverem faltando, o app baixa sozinho ao abrir (conferindo o SHA-256 publicado por cada
+projeto), mostrando o andamento na barra de status. O yt-dlp tem o próprio reparo automático. Se a
+pasta do programa for protegida, os componentes vão para `componentes\` dentro da pasta de logs
+(ver `Componentes.cs`). O botão **Verificar atualização**, em Configurações, atualiza o yt-dlp e
+confere os outros dois.
 
 ## 2. Arquitetura da interface (barra lateral + páginas)
 
 `MainWindow.axaml` tem a **barra lateral** (Início, Histórico, Pasta de destino,
-Configurações e, embaixo, o cartão com a versão e os créditos) e quatro "páginas" que ocupam
+Configurações, Sobre e, embaixo, o cartão com a versão e os créditos) e cinco "páginas" que ocupam
 a mesma área e alternam visibilidade:
 
 | Página               | Conteúdo                                             |
@@ -78,6 +80,7 @@ a mesma área e alternam visibilidade:
 | `PaginaHistorico`      | Lista (Tipo/Nome/Data) dos downloads já concluídos    |
 | `PaginaPasta`          | Local de salvamento + "Alterar pasta" e "Abrir no Explorer" |
 | `PaginaConfig`         | Cookies (login), playlists e "Verificar atualização" do yt-dlp |
+| `PaginaSobre`           | Créditos: quem fez o app (Thayna Dias, com o Claude) e as ferramentas livres que ele usa, com a versão instalada de cada uma |
 
 A troca é feita por `MostrarPagina(string pagina)` em `MainWindow.axaml.cs`. A **barra de
 status** fica sempre visível embaixo, com o estágio do download, a barra de progresso e o

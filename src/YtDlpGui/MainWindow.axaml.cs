@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
@@ -43,8 +43,13 @@ namespace YtDlpGui
     public partial class MainWindow : Window
     {
         private readonly string _ytDlpPath;
-        private readonly string _ffmpegPath;
-        private readonly string _ffmpegDir;
+
+        // O ffmpeg.exe pode estar na pasta do programa ou na pasta alternativa (ver Componentes.cs).
+        private static string? FfmpegPath => Componentes.Localizar(Componentes.Ffmpeg);
+
+        // Download dos componentes (FFmpeg e Deno) que estiverem faltando. Um download de vídeo
+        // espera esta tarefa terminar antes de começar.
+        private Task? _tarefaComponentes;
 
         private Process? _processoAtual;
         private bool _canceladoPeloUsuario;
@@ -87,8 +92,6 @@ namespace YtDlpGui
 
             string pastaApp = AppDomain.CurrentDomain.BaseDirectory;
             _ytDlpPath = Path.Combine(pastaApp, "yt-dlp.exe");
-            _ffmpegPath = Path.Combine(pastaApp, "ffmpeg.exe");
-            _ffmpegDir = pastaApp;
 
             TxtPasta.Text = RegrasDoDownload.ObterPastaDownloadsPadrao();
             CmbNavegador.ItemsSource = RegrasDoDownload.Navegadores;
@@ -96,7 +99,10 @@ namespace YtDlpGui
 
             var versao = Assembly.GetExecutingAssembly().GetName().Version;
             if (versao is not null)
+            {
                 Creditos.Version = $"versão {versao.Major}.{versao.Minor}";
+                TxtSobreVersao.Text = $"Versão {versao.Major}.{versao.Minor}.{versao.Build}";
+            }
 
             _timerSpinner.Tick += SpinnerTick;
             MostrarPagina("home");
@@ -104,7 +110,7 @@ namespace YtDlpGui
 
         private void LigarEventos()
         {
-            foreach (var nav in new[] { NavInicio, NavHistorico, NavPasta, NavConfig })
+            foreach (var nav in new[] { NavInicio, NavHistorico, NavPasta, NavConfig, NavSobre })
                 nav.IsCheckedChanged += (s, _) =>
                 {
                     if (s is RadioButton { IsChecked: true, Tag: string pagina }) MostrarPagina(pagina);
@@ -130,15 +136,29 @@ namespace YtDlpGui
             TxtCookiesArquivo.AddHandler(PointerReleasedEvent, async (_, _) => await EscolherArquivoCookiesAsync(),
                 RoutingStrategies.Tunnel | RoutingStrategies.Bubble, handledEventsToo: true);
             BtnAtualizarYtDlp.Click += async (_, _) => await AtualizarYtDlpPeloBotaoAsync();
+
+            // Sobre: cada ferramenta creditada abre o site oficial dela.
+            foreach (var link in new[] { LinkYtDlp, LinkFfmpeg, LinkDeno, LinkAvalonia, LinkInter, LinkToolkit, LinkClaude, LinkNokyLabs })
+                link.Click += async (s, _) =>
+                {
+                    if (s is Button { Tag: string url })
+                        await AbrirSiteAsync(url);
+                };
         }
 
         protected override void OnOpened(EventArgs e)
         {
             base.OnOpened(e);
-            RegistrarLog($"App iniciado. yt-dlp existe: {File.Exists(_ytDlpPath)} | ffmpeg existe: {File.Exists(_ffmpegPath)}");
+            RegistrarLog($"App iniciado. yt-dlp existe: {File.Exists(_ytDlpPath)} | ffmpeg existe: {FfmpegPath is not null} | " +
+                         $"deno existe: {Componentes.Instalado(Componentes.Deno)}");
 
             // O autodiagnóstico roda depois que a janela já apareceu, para não atrasar a abertura.
-            Dispatcher.UIThread.Post(async () => await ExecutarAutoDiagnosticoAsync(mostrarResumo: false), DispatcherPriority.Background);
+            // Em seguida, baixa sozinho os componentes que estiverem faltando (FFmpeg e Deno).
+            Dispatcher.UIThread.Post(async () =>
+            {
+                await ExecutarAutoDiagnosticoAsync(mostrarResumo: false);
+                await GarantirComponentesAsync();
+            }, DispatcherPriority.Background);
         }
 
         // ---------------------------------------------------------------
@@ -324,9 +344,12 @@ namespace YtDlpGui
             PaginaHistorico.IsVisible = pagina == "historico";
             PaginaPasta.IsVisible = pagina == "pasta";
             PaginaConfig.IsVisible = pagina == "config";
+            PaginaSobre.IsVisible = pagina == "sobre";
+            if (pagina == "sobre")
+                _ = AtualizarSobreAsync();
 
             // Mantém a barra lateral em sincronia quando a troca vem do código (ex.: "URL inválida" leva ao Início).
-            var nav = pagina switch { "historico" => NavHistorico, "pasta" => NavPasta, "config" => NavConfig, _ => NavInicio };
+            var nav = pagina switch { "historico" => NavHistorico, "pasta" => NavPasta, "config" => NavConfig, "sobre" => NavSobre, _ => NavInicio };
             if (nav.IsChecked != true) nav.IsChecked = true;
 
             var visivel = pagina switch { "historico" => PaginaHistorico, "pasta" => PaginaPasta, "config" => PaginaConfig, _ => PaginaInicio };
@@ -400,6 +423,14 @@ namespace YtDlpGui
                 if (!File.Exists(_ytDlpPath))
                     await OferecerBaixarYtDlpAsync("O yt-dlp.exe não foi encontrado na pasta do programa.");
 
+                // Se os componentes ainda estão sendo baixados (primeira abertura), espera terminar.
+                if (_tarefaComponentes is { IsCompleted: false })
+                {
+                    DefinirEstadoDownloadEmAndamento(true);
+                    await _tarefaComponentes;
+                    DefinirEstadoDownloadEmAndamento(false);
+                }
+
                 if (!await ValidarEntradasAsync(exigeFfmpeg: mp3))
                     return;
 
@@ -442,7 +473,7 @@ namespace YtDlpGui
                        : ModoCookies.Nenhum,
                 Navegador: CmbNavegador.SelectedItem as string,
                 ArquivoCookies: TxtCookiesArquivo.Text,
-                PastaFfmpeg: File.Exists(_ffmpegPath) ? _ffmpegDir : null));
+                PastaFfmpeg: FfmpegPath is string ffmpeg ? Path.GetDirectoryName(ffmpeg) : null));
 
         private async Task MostrarErroInesperadoAsync()
         {
@@ -570,13 +601,21 @@ namespace YtDlpGui
                 return false;
             }
 
-            if (!File.Exists(_ffmpegPath))
+            // Faltando o FFmpeg (ex.: estava sem internet ao abrir), tenta baixar agora.
+            if (FfmpegPath is null)
+            {
+                DefinirEstadoDownloadEmAndamento(true);
+                await GarantirComponentesAsync();
+                DefinirEstadoDownloadEmAndamento(false);
+            }
+
+            if (FfmpegPath is null)
             {
                 if (exigeFfmpeg)
                 {
                     await Dialogo.MostrarAsync(this,
-                        "O ffmpeg.exe é obrigatório para baixar em MP3 e não foi encontrado.\n\n" +
-                        "Coloque o arquivo ffmpeg.exe na mesma pasta deste programa.",
+                        "O ffmpeg.exe é obrigatório para baixar em MP3 e não foi possível baixá-lo agora.\n\n" +
+                        "Confira a conexão com a internet e tente de novo, ou coloque o ffmpeg.exe na mesma pasta deste programa.",
                         "ffmpeg.exe não encontrado", TipoDialogo.Erro);
                     return false;
                 }
@@ -813,7 +852,7 @@ namespace YtDlpGui
             };
             // Pede ao Python do yt-dlp que escreva em UTF-8 quando a saída é redirecionada
             // (ajuda a manter acentos corretos em títulos e caminhos).
-            psi.Environment["PYTHONIOENCODING"] = "utf-8";
+            Componentes.PrepararAmbiente(psi); // UTF-8 + PATH com o Deno e o FFmpeg
 
             foreach (var arg in argumentos)
                 psi.ArgumentList.Add(arg);
@@ -1290,7 +1329,7 @@ namespace YtDlpGui
                 StandardOutputEncoding = Encoding.UTF8,
                 StandardErrorEncoding = Encoding.UTF8,
             };
-            psi.Environment["PYTHONIOENCODING"] = "utf-8";
+            Componentes.PrepararAmbiente(psi); // UTF-8 + PATH com o Deno e o FFmpeg
             foreach (var arg in RegrasDoDownload.ArgumentosDaExtracaoDeCookies(navegador, caminhoCookies))
                 psi.ArgumentList.Add(arg);
 
@@ -1433,6 +1472,11 @@ namespace YtDlpGui
 
                 TxtAtualizarStatus.Text = "Verificando...";
                 await ExecutarYtDlpAsync(new List<string> { "-U" }, tipoParaHistorico: "", url: "");
+
+                // Junto com o yt-dlp, confere o FFmpeg e o Deno (e baixa o que estiver faltando).
+                await GarantirComponentesAsync();
+                if (FaltandoComponentes().Count > 0)
+                    TxtAtualizarStatus.Text = "Faltou baixar: " + string.Join(", ", FaltandoComponentes().Select(c => c.Nome)) + ". Tente de novo mais tarde.";
             }
             catch (Exception ex)
             {
@@ -1442,6 +1486,120 @@ namespace YtDlpGui
             finally
             {
                 _ocupado = false;
+            }
+        }
+
+        // ---------------------------------------------------------------
+        // Componentes (FFmpeg e Deno) — ver Componentes.cs
+        // ---------------------------------------------------------------
+
+        private static List<Componente> FaltandoComponentes() =>
+            Componentes.Todos.Where(c => !Componentes.Instalado(c)).ToList();
+
+        /// <summary>
+        /// Baixa os componentes que estiverem faltando, mostrando o andamento na barra de status.
+        /// Se já houver um download deles em andamento, só espera o mesmo terminar.
+        /// </summary>
+        private Task GarantirComponentesAsync()
+        {
+            if (_tarefaComponentes is { IsCompleted: false })
+                return _tarefaComponentes;
+
+            if (FaltandoComponentes().Count == 0)
+                return Task.CompletedTask;
+
+            _tarefaComponentes = BaixarComponentesFaltandoAsync();
+            return _tarefaComponentes;
+        }
+
+        private async Task BaixarComponentesFaltandoAsync()
+        {
+            var faltando = FaltandoComponentes();
+            var falhas = new List<string>();
+
+            try
+            {
+                for (int i = 0; i < faltando.Count; i++)
+                {
+                    var c = faltando[i];
+                    string etapa = faltando.Count > 1 ? $" ({i + 1} de {faltando.Count})" : "";
+                    string texto = $"Baixando o {c.Nome}{etapa}, que {c.Para}...";
+                    AtualizarStatus(texto);
+                    AtualizarProgresso(0);
+
+                    var progresso = new Progress<double>(pct =>
+                    {
+                        if (pct >= 0) AtualizarProgresso(pct);
+                    });
+
+                    var (sucesso, mensagem) = await Componentes.InstalarAsync(c, progresso);
+                    if (_fechada)
+                        return;
+
+                    if (!sucesso)
+                    {
+                        falhas.Add(c.Nome);
+                        GerenciadorLog.Aviso("Componente não instalado: " + mensagem);
+                    }
+                }
+
+                AtualizarProgresso(falhas.Count == 0 ? 100 : 0);
+                AtualizarStatus(falhas.Count == 0
+                    ? "Componentes prontos. Pronto para uso."
+                    : "Não foi possível baixar: " + string.Join(", ", falhas) + ". Confira a internet.");
+
+                if (PaginaSobre.IsVisible)
+                    _ = AtualizarSobreAsync();
+            }
+            catch (Exception ex)
+            {
+                GerenciadorLog.Erro("Falha ao baixar os componentes", ex);
+                AtualizarStatus("Não foi possível baixar os componentes.");
+            }
+        }
+
+        // ---------------------------------------------------------------
+        // Página Sobre
+        // ---------------------------------------------------------------
+
+        /// <summary>Mostra, ao lado de cada ferramenta, se ela está instalada e em que versão.</summary>
+        private async Task AtualizarSobreAsync()
+        {
+            async Task Preencher(TextBlock alvo, string? caminho, string argumento)
+            {
+                if (caminho is null || !File.Exists(caminho))
+                {
+                    alvo.Text = _tarefaComponentes is { IsCompleted: false } ? "baixando..." : "não instalado";
+                    return;
+                }
+                alvo.Text = "verificando...";
+                string? versao = await Componentes.LerVersaoAsync(caminho, argumento);
+                if (!_fechada)
+                    alvo.Text = versao is null ? "instalado" : "versão " + versao;
+            }
+
+            try
+            {
+                await Task.WhenAll(
+                    Preencher(TxtVersaoYtDlp, _ytDlpPath, "--version"),
+                    Preencher(TxtVersaoFfmpeg, FfmpegPath, "-version"),
+                    Preencher(TxtVersaoDeno, Componentes.Localizar(Componentes.Deno), "--version"));
+            }
+            catch (Exception ex)
+            {
+                GerenciadorLog.Aviso("Não foi possível ler as versões para a tela Sobre: " + ex.Message);
+            }
+        }
+
+        private async Task AbrirSiteAsync(string url)
+        {
+            try
+            {
+                await Launcher.LaunchUriAsync(new Uri(url));
+            }
+            catch (Exception ex)
+            {
+                GerenciadorLog.Aviso("Não foi possível abrir o site " + url + ": " + ex.Message);
             }
         }
 
@@ -1524,7 +1682,7 @@ namespace YtDlpGui
         {
             try
             {
-                var resultados = await Task.Run(() => AutoReparo.VerificarInicio(_ytDlpPath, _ffmpegPath));
+                var resultados = await Task.Run(() => AutoReparo.VerificarInicio(_ytDlpPath, FfmpegPath ?? Path.Combine(Componentes.PastaDoApp, "ffmpeg.exe")));
                 if (_fechada)
                     return;
 

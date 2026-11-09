@@ -1,8 +1,8 @@
-<#
+﻿<#
     publicar.ps1
     -------------------------------------------------------------------------
     Gera um pacote PRONTO PARA DISTRIBUIR a qualquer usuário comum, sem que
-    ele precise instalar o .NET, o yt-dlp ou o ffmpeg manualmente.
+    ele precise instalar o .NET, o yt-dlp, o ffmpeg ou o Deno manualmente.
 
     QUEM DEVE RODAR ESTE SCRIPT: você (o desenvolvedor/professor), apenas UMA
     vez a cada nova versão que quiser distribuir. O usuário final NUNCA
@@ -12,7 +12,7 @@
       - Windows 10/11
       - .NET 8 SDK instalado (https://dotnet.microsoft.com/download)
       - PowerShell 5.1+ (já vem com o Windows)
-      - Conexão com a internet (para baixar yt-dlp.exe e ffmpeg.exe)
+      - Conexão com a internet (para baixar yt-dlp.exe, ffmpeg.exe e deno.exe)
 
     O QUE ELE FAZ:
       1. Compila a aplicação em modo "self-contained" + "single file": gera
@@ -21,7 +21,7 @@
          programa.
       2. Baixa automaticamente o yt-dlp.exe mais recente do GitHub oficial.
       3. Baixa automaticamente um build oficial do ffmpeg (gyan.dev) e extrai
-         apenas o ffmpeg.exe.
+         apenas o ffmpeg.exe. Depois, o deno.exe (GitHub oficial do Deno).
       4. Copia o arquivo LEIA-ME.txt (instruções em português simples).
       5. Junta tudo em uma pasta "Distribuicao" e compacta em
          "YtDlpGui-Portatil.zip", pronto para enviar por e-mail, Google
@@ -116,6 +116,29 @@ try {
 catch {
     Write-Host "Não foi possível baixar/extrair o ffmpeg automaticamente ($($_.Exception.Message))." -ForegroundColor Yellow
     Write-Host "Baixe manualmente em https://www.gyan.dev/ffmpeg/builds/ e coloque o ffmpeg.exe em: $pastaDist" -ForegroundColor Yellow
+}
+
+# --- 4b. Download do deno.exe -----------------------------------------------
+# O yt-dlp usa o Deno para resolver os desafios em JavaScript do YouTube.
+# Sem ele, muitos vídeos falham com "Requested format is not available".
+# (Se ele faltar no pacote, o próprio app baixa na primeira abertura.)
+Escrever-Etapa "Baixando o Deno (GitHub oficial)..."
+try {
+    $denoZip = Join-Path $env:TEMP "deno-download-$(Get-Random).zip"
+    $denoExtract = Join-Path $env:TEMP "deno-extract-$(Get-Random)"
+
+    Invoke-WebRequest -Uri "https://github.com/denoland/deno/releases/latest/download/deno-x86_64-pc-windows-msvc.zip" `
+        -OutFile $denoZip
+
+    Expand-Archive -Path $denoZip -DestinationPath $denoExtract -Force
+    Copy-Item (Join-Path $denoExtract "deno.exe") (Join-Path $pastaDist "deno.exe") -Force
+
+    Remove-Item $denoZip -Force -ErrorAction SilentlyContinue
+    Remove-Item $denoExtract -Recurse -Force -ErrorAction SilentlyContinue
+}
+catch {
+    Write-Host "Não foi possível baixar o Deno automaticamente ($($_.Exception.Message))." -ForegroundColor Yellow
+    Write-Host "Sem problema: o app baixa o Deno sozinho na primeira vez que abrir." -ForegroundColor Yellow
 }
 
 # --- 5. Instruções para o usuário final ------------------------------------

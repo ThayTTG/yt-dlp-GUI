@@ -10,6 +10,9 @@ Tudo o que muda no YT-DLP GUI, versão por versão. O texto de cada versão vira
 - As notificações de download concluído aparecem no formato novo do Windows 10/11.
 - No canto da barra lateral: "Idealizado e aprovado por Thayna Dias" e "Desenvolvido com IA (Claude, da Anthropic)".
 - O ícone da janela volta a aparecer na versão baixada.
+- Corrige o erro "Requested format is not available" no YouTube: o app agora usa o Deno, que resolve os desafios do YouTube.
+- O FFmpeg e o Deno são baixados sozinhos (dos sites oficiais, com conferência de integridade) se estiverem faltando, e o botão de atualizar confere os dois junto com o yt-dlp.
+- Nova tela **Sobre**, com os créditos de quem fez o app e das ferramentas livres que ele usa (yt-dlp, FFmpeg, Deno e outras).
 
 ## [2.0.0] - 2026-10-15
 - Visual novo, inspirado no NokyLabs Launcher.

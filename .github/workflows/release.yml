@@ -7,7 +7,7 @@ name: Build e Release
 #   • ou enviar uma tag no formato v1.2.3
 #
 # Usa o próprio publicar.ps1: gera o YtDlpGui.exe completo (não precisa de .NET)
-# e já inclui o yt-dlp.exe e o ffmpeg.exe. O arquivo final tem nome fixo
+# e já inclui o yt-dlp.exe, o ffmpeg.exe e o deno.exe. O arquivo final tem nome fixo
 # (YtDlpGui-win-x64.zip), usado pelo site e pelo NokyLabs Launcher.
 on:
   push:
@@ -70,7 +70,7 @@ jobs:
       - name: Conferir e renomear
         shell: pwsh
         run: |
-          foreach ($f in "YtDlpGui.exe", "yt-dlp.exe", "ffmpeg.exe", "icon.ico") {
+          foreach ($f in "YtDlpGui.exe", "yt-dlp.exe", "ffmpeg.exe", "deno.exe", "icon.ico") {
             if (-not (Test-Path "src\YtDlpGui\Distribuicao\$f")) { throw "Faltou o $f no pacote." }
           }
           Move-Item src\YtDlpGui\YtDlpGui-Portatil.zip YtDlpGui-win-x64.zip
@@ -100,7 +100,7 @@ jobs:
             2. Extraia a pasta inteira e abra o `YtDlpGui.exe`
             3. Se aparecer o aviso azul do Windows, clique em "Mais informações" › "Executar assim mesmo"
 
-            Já vem com o yt-dlp e o ffmpeg. Não precisa instalar o .NET.
+            Já vem com o yt-dlp, o ffmpeg e o Deno. Não precisa instalar o .NET.
 
             Mais detalhes: https://thayttg.github.io/nokylabs/#ytdlp-gui
 

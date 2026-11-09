@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Text;
@@ -106,7 +106,7 @@ namespace YtDlpGui
             psi.RedirectStandardError = true;
             psi.StandardOutputEncoding = Encoding.UTF8;
             psi.StandardErrorEncoding = Encoding.UTF8;
-            psi.Environment["PYTHONIOENCODING"] = "utf-8";
+            Componentes.PrepararAmbiente(psi); // UTF-8 + PATH com o Deno e o FFmpeg
 
             Process? processo;
             try

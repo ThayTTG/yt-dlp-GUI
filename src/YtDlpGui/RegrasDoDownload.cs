@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Text.RegularExpressions;
@@ -202,6 +202,14 @@ namespace YtDlpGui
             {
                 return "Este vídeo tem restrição de idade e exige login. " +
                        "Ative os cookies do navegador ou um arquivo cookies.txt em \"Configurações\".";
+            }
+
+            if (erroBruto.Contains("Requested format is not available", StringComparison.OrdinalIgnoreCase) ||
+                erroBruto.Contains("No supported JavaScript runtime", StringComparison.OrdinalIgnoreCase))
+            {
+                return "O YouTube não liberou os formatos deste vídeo. Isso costuma acontecer quando o Deno " +
+                       "(o componente que resolve os desafios do YouTube) ainda não foi baixado ou o yt-dlp está " +
+                       "desatualizado. Vá em \"Configurações\" › \"Verificar atualização\" e tente de novo.";
             }
 
             if (erroBruto.Contains("ffmpeg"))

@@ -1,4 +1,4 @@
-<Window xmlns="https://github.com/avaloniaui"
+﻿<Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:ui="using:NokyLabs.UI"
         xmlns:local="using:YtDlpGui"
@@ -10,8 +10,8 @@
         WindowStartupLocation="CenterScreen">
 
   <!--
-    Janela principal: barra lateral (Início, Histórico, Pasta de destino, Configurações),
-    as quatro páginas no meio e a barra de status fixa embaixo, com o progresso e o botão
+    Janela principal: barra lateral (Início, Histórico, Pasta de destino, Configurações, Sobre),
+    as cinco páginas no meio e a barra de status fixa embaixo, com o progresso e o botão
     vermelho de cancelar. Toda a lógica está em MainWindow.axaml.cs (a mesma da versão 2).
   -->
 
@@ -136,6 +136,12 @@
             <StackPanel Orientation="Horizontal" Spacing="12">
               <Viewbox Width="18" Height="18"><Path Classes="icon" Data="{StaticResource IconSettings}" /></Viewbox>
               <TextBlock Text="Configurações" VerticalAlignment="Center" />
+            </StackPanel>
+          </RadioButton>
+          <RadioButton x:Name="NavSobre" Classes="nav" GroupName="nav" Tag="sobre">
+            <StackPanel Orientation="Horizontal" Spacing="12">
+              <Viewbox Width="18" Height="18"><Path Classes="icon" Data="{StaticResource IconInfo}" /></Viewbox>
+              <TextBlock Text="Sobre" VerticalAlignment="Center" />
             </StackPanel>
           </RadioButton>
         </StackPanel>
@@ -330,7 +336,7 @@
           <StackPanel Spacing="18">
             <StackPanel Spacing="4">
               <TextBlock Classes="titulo" Text="Configurações" />
-              <TextBlock Classes="secondary" Text="Login por cookies, playlists e atualização do yt-dlp." />
+              <TextBlock Classes="secondary" Text="Login por cookies, playlists e atualização do yt-dlp e dos componentes." />
             </StackPanel>
 
             <!-- Cookies -->
@@ -386,9 +392,9 @@
               <!-- Atualizar o yt-dlp -->
               <Border Grid.Column="2" Classes="secao">
                 <StackPanel Spacing="6">
-                  <TextBlock Classes="h3" Text="Atualizar o yt-dlp" />
+                  <TextBlock Classes="h3" Text="Atualizar o yt-dlp e os componentes" />
                   <TextBlock x:Name="TxtAtualizarStatus" Classes="secondary" TextWrapping="Wrap"
-                             Text="Se os downloads começarem a falhar, atualizar costuma resolver." />
+                             Text="Atualiza o yt-dlp e baixa o FFmpeg e o Deno se estiverem faltando. Se os downloads começarem a falhar, isso costuma resolver." />
                   <Button x:Name="BtnAtualizarYtDlp" Classes="secondary" Margin="0,6,0,0" HorizontalAlignment="Left">
                     <StackPanel Orientation="Horizontal" Spacing="8">
                       <Viewbox Width="15" Height="15"><Path Classes="icon" Data="{StaticResource IconRefresh}" /></Viewbox>
@@ -398,6 +404,154 @@
                 </StackPanel>
               </Border>
             </Grid>
+          </StackPanel>
+        </Border>
+      </ScrollViewer>
+
+      <!-- ────────── SOBRE ────────── -->
+      <ScrollViewer x:Name="PaginaSobre" IsVisible="False">
+        <Border Classes="card" MaxWidth="860" Margin="32,30" Padding="28,26" VerticalAlignment="Top">
+          <StackPanel Spacing="18">
+            <Grid ColumnDefinitions="Auto,*">
+              <Border Width="64" Height="64" CornerRadius="20" Background="{DynamicResource AccentBrush}">
+                <Viewbox Width="30" Height="30">
+                  <Path Classes="icon" Data="{StaticResource IconPlay}" Stroke="{DynamicResource OnAccentBrush}"
+                        Fill="{DynamicResource OnAccentBrush}" StrokeThickness="1.5" />
+                </Viewbox>
+              </Border>
+              <StackPanel Grid.Column="1" Margin="18,0,0,0" VerticalAlignment="Center" Spacing="3">
+                <TextBlock Classes="titulo" Text="YT-DLP GUI" />
+                <TextBlock x:Name="TxtSobreVersao" Classes="secondary num" Text="Versão" />
+                <TextBlock Classes="muted" TextWrapping="Wrap"
+                           Text="Baixe vídeos e áudios colando um link, sem abrir o terminal. Feito para usar com a turma." />
+              </StackPanel>
+            </Grid>
+
+            <!-- Quem fez -->
+            <Border Classes="secao" Background="{DynamicResource AccentSoftBrush}" BorderBrush="{DynamicResource AccentBrush}">
+              <StackPanel Spacing="10">
+                <TextBlock Classes="caps" Text="QUEM FEZ" />
+                <TextBlock TextWrapping="Wrap" FontSize="15">
+                  <Run Text="Idealizado, testado e aprovado por " /><Run Text="Thayna Dias" FontWeight="Bold" /><Run Text=" (Noky), da NokyLabs." />
+                </TextBlock>
+                <TextBlock TextWrapping="Wrap" FontSize="15">
+                  <Run Text="Desenvolvido com o auxílio total do " /><Run Text="Claude" FontWeight="Bold" /><Run Text=", a inteligência artificial da Anthropic: o código, a interface, os testes e esta tela foram escritos em parceria com ele, a partir das ideias e das decisões da Thayna." />
+                </TextBlock>
+                <WrapPanel>
+                  <Button x:Name="LinkNokyLabs" Classes="link" Tag="https://thayttg.github.io/nokylabs/" Margin="0,0,18,0">
+                    <StackPanel Orientation="Horizontal" Spacing="6">
+                      <TextBlock Text="Site da NokyLabs" VerticalAlignment="Center" />
+                      <Viewbox Width="13" Height="13"><Path Classes="icon accent" Data="{StaticResource IconExternal}" /></Viewbox>
+                    </StackPanel>
+                  </Button>
+                  <Button x:Name="LinkClaude" Classes="link" Tag="https://claude.ai">
+                    <StackPanel Orientation="Horizontal" Spacing="6">
+                      <TextBlock Text="Conheça o Claude" VerticalAlignment="Center" />
+                      <Viewbox Width="13" Height="13"><Path Classes="icon accent" Data="{StaticResource IconExternal}" /></Viewbox>
+                    </StackPanel>
+                  </Button>
+                </WrapPanel>
+              </StackPanel>
+            </Border>
+
+            <!-- Ferramentas usadas -->
+            <StackPanel Spacing="10">
+              <StackPanel Spacing="4">
+                <TextBlock Classes="h3" Text="Feito sobre o trabalho de muita gente" />
+                <TextBlock Classes="secondary" TextWrapping="Wrap"
+                           Text="Este app é uma janela amigável para ferramentas livres, criadas e mantidas por outras pessoas. Todo o crédito do trabalho pesado é delas." />
+              </StackPanel>
+
+              <Border Classes="secao" Padding="16,12">
+                <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto,Auto">
+                  <TextBlock Classes="h3" Text="yt-dlp" />
+                  <TextBlock x:Name="TxtVersaoYtDlp" Grid.Column="1" Classes="muted num" Text="—" HorizontalAlignment="Right" />
+                  <TextBlock Grid.Row="1" Grid.ColumnSpan="2" Classes="muted" Text="Comunidade yt-dlp · licença Unlicense (domínio público)" Margin="0,2,0,0" TextWrapping="Wrap" />
+                  <TextBlock Grid.Row="2" Classes="secondary" Text="É quem realmente baixa os vídeos: entende os sites, escolhe os formatos e faz o download." Margin="0,6,12,0" TextWrapping="Wrap" />
+                  <Button x:Name="LinkYtDlp" Grid.Row="2" Grid.Column="1" Classes="link" Tag="https://github.com/yt-dlp/yt-dlp"
+                          VerticalAlignment="Bottom" ToolTip.Tip="https://github.com/yt-dlp/yt-dlp">
+                    <StackPanel Orientation="Horizontal" Spacing="6">
+                      <TextBlock Text="Site" VerticalAlignment="Center" />
+                      <Viewbox Width="13" Height="13"><Path Classes="icon accent" Data="{StaticResource IconExternal}" /></Viewbox>
+                    </StackPanel>
+                  </Button>
+                </Grid>
+              </Border>
+              <Border Classes="secao" Padding="16,12">
+                <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto,Auto">
+                  <TextBlock Classes="h3" Text="FFmpeg" />
+                  <TextBlock x:Name="TxtVersaoFfmpeg" Grid.Column="1" Classes="muted num" Text="—" HorizontalAlignment="Right" />
+                  <TextBlock Grid.Row="1" Grid.ColumnSpan="2" Classes="muted" Text="Desenvolvedores do FFmpeg · LGPL/GPL · build para Windows de Gyan Doshi (gyan.dev)" Margin="0,2,0,0" TextWrapping="Wrap" />
+                  <TextBlock Grid.Row="2" Classes="secondary" Text="Junta o vídeo e o áudio num MP4 de alta qualidade e converte o áudio para MP3." Margin="0,6,12,0" TextWrapping="Wrap" />
+                  <Button x:Name="LinkFfmpeg" Grid.Row="2" Grid.Column="1" Classes="link" Tag="https://ffmpeg.org"
+                          VerticalAlignment="Bottom" ToolTip.Tip="https://ffmpeg.org">
+                    <StackPanel Orientation="Horizontal" Spacing="6">
+                      <TextBlock Text="Site" VerticalAlignment="Center" />
+                      <Viewbox Width="13" Height="13"><Path Classes="icon accent" Data="{StaticResource IconExternal}" /></Viewbox>
+                    </StackPanel>
+                  </Button>
+                </Grid>
+              </Border>
+              <Border Classes="secao" Padding="16,12">
+                <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto,Auto">
+                  <TextBlock Classes="h3" Text="Deno" />
+                  <TextBlock x:Name="TxtVersaoDeno" Grid.Column="1" Classes="muted num" Text="—" HorizontalAlignment="Right" />
+                  <TextBlock Grid.Row="1" Grid.ColumnSpan="2" Classes="muted" Text="Deno Land Inc. · licença MIT" Margin="0,2,0,0" TextWrapping="Wrap" />
+                  <TextBlock Grid.Row="2" Classes="secondary" Text="Resolve os desafios em JavaScript do YouTube; sem ele, muitos vídeos aparecem sem formatos disponíveis." Margin="0,6,12,0" TextWrapping="Wrap" />
+                  <Button x:Name="LinkDeno" Grid.Row="2" Grid.Column="1" Classes="link" Tag="https://deno.com"
+                          VerticalAlignment="Bottom" ToolTip.Tip="https://deno.com">
+                    <StackPanel Orientation="Horizontal" Spacing="6">
+                      <TextBlock Text="Site" VerticalAlignment="Center" />
+                      <Viewbox Width="13" Height="13"><Path Classes="icon accent" Data="{StaticResource IconExternal}" /></Viewbox>
+                    </StackPanel>
+                  </Button>
+                </Grid>
+              </Border>
+              <Border Classes="secao" Padding="16,12">
+                <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto,Auto">
+                  <TextBlock Classes="h3" Text="Avalonia UI" />
+                  <TextBlock Grid.Row="1" Grid.ColumnSpan="2" Classes="muted" Text="Equipe e comunidade Avalonia · licença MIT" Margin="0,2,0,0" TextWrapping="Wrap" />
+                  <TextBlock Grid.Row="2" Classes="secondary" Text="Desenha a janela, os botões e as animações deste app." Margin="0,6,12,0" TextWrapping="Wrap" />
+                  <Button x:Name="LinkAvalonia" Grid.Row="2" Grid.Column="1" Classes="link" Tag="https://avaloniaui.net"
+                          VerticalAlignment="Bottom" ToolTip.Tip="https://avaloniaui.net">
+                    <StackPanel Orientation="Horizontal" Spacing="6">
+                      <TextBlock Text="Site" VerticalAlignment="Center" />
+                      <Viewbox Width="13" Height="13"><Path Classes="icon accent" Data="{StaticResource IconExternal}" /></Viewbox>
+                    </StackPanel>
+                  </Button>
+                </Grid>
+              </Border>
+              <Border Classes="secao" Padding="16,12">
+                <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto,Auto">
+                  <TextBlock Classes="h3" Text="Fonte Inter" />
+                  <TextBlock Grid.Row="1" Grid.ColumnSpan="2" Classes="muted" Text="Rasmus Andersson · SIL Open Font License" Margin="0,2,0,0" TextWrapping="Wrap" />
+                  <TextBlock Grid.Row="2" Classes="secondary" Text="A fonte de todos os textos do app." Margin="0,6,12,0" TextWrapping="Wrap" />
+                  <Button x:Name="LinkInter" Grid.Row="2" Grid.Column="1" Classes="link" Tag="https://rsms.me/inter/"
+                          VerticalAlignment="Bottom" ToolTip.Tip="https://rsms.me/inter/">
+                    <StackPanel Orientation="Horizontal" Spacing="6">
+                      <TextBlock Text="Site" VerticalAlignment="Center" />
+                      <Viewbox Width="13" Height="13"><Path Classes="icon accent" Data="{StaticResource IconExternal}" /></Viewbox>
+                    </StackPanel>
+                  </Button>
+                </Grid>
+              </Border>
+              <Border Classes="secao" Padding="16,12">
+                <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto,Auto">
+                  <TextBlock Classes="h3" Text="Windows Community Toolkit" />
+                  <TextBlock Grid.Row="1" Grid.ColumnSpan="2" Classes="muted" Text="Microsoft e comunidade .NET Foundation · licença MIT" Margin="0,2,0,0" TextWrapping="Wrap" />
+                  <TextBlock Grid.Row="2" Classes="secondary" Text="Mostra as notificações do Windows quando um download termina." Margin="0,6,12,0" TextWrapping="Wrap" />
+                  <Button x:Name="LinkToolkit" Grid.Row="2" Grid.Column="1" Classes="link" Tag="https://github.com/CommunityToolkit/WindowsCommunityToolkit"
+                          VerticalAlignment="Bottom" ToolTip.Tip="https://github.com/CommunityToolkit/WindowsCommunityToolkit">
+                    <StackPanel Orientation="Horizontal" Spacing="6">
+                      <TextBlock Text="Site" VerticalAlignment="Center" />
+                      <Viewbox Width="13" Height="13"><Path Classes="icon accent" Data="{StaticResource IconExternal}" /></Viewbox>
+                    </StackPanel>
+                  </Button>
+                </Grid>
+              </Border>
+              <TextBlock Classes="muted" TextWrapping="Wrap" Margin="0,4,0,0"
+                         Text="O yt-dlp, o FFmpeg e o Deno são baixados dos sites oficiais e conferidos (SHA-256) antes de serem usados. Use o app só para conteúdo que você tem direito de baixar." />
+            </StackPanel>
           </StackPanel>
         </Border>
       </ScrollViewer>
