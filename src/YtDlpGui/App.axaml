@@ -1,0 +1,23 @@
+<Application xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:ui="using:NokyLabs.UI"
+             x:Class="YtDlpGui.App"
+             RequestedThemeVariant="Dark">
+
+  <Application.Resources>
+    <!-- Ícones só deste app (o resto vem da NokyLabs.UI). Grade 24x24, traço de 2px. -->
+    <StreamGeometry x:Key="IconVideo">M3.5,6.5 A2,2 0 0 1 5.5,4.5 H18.5 A2,2 0 0 1 20.5,6.5 V17.5 A2,2 0 0 1 18.5,19.5 H5.5 A2,2 0 0 1 3.5,17.5 Z M10,9 V15 L15,12 Z</StreamGeometry>
+    <StreamGeometry x:Key="IconMusic">M9,17.5 V5.5 L19,3.5 V15.5 M5.5,17.5 A3,2.6 0 1 0 11.5,17.5 A3,2.6 0 1 0 5.5,17.5 Z M13,15.5 A3,2.6 0 1 0 19,15.5 A3,2.6 0 1 0 13,15.5 Z</StreamGeometry>
+    <StreamGeometry x:Key="IconLink">M10,14 A4.2,4.2 0 0 0 16,14 L19,11 A4.2,4.2 0 0 0 13,5 L11.5,6.5 M14,10 A4.2,4.2 0 0 0 8,10 L5,13 A4.2,4.2 0 0 0 11,19 L12.5,17.5</StreamGeometry>
+    <StreamGeometry x:Key="IconCookie">M12,3 A9,9 0 1 0 21,12 A3,3 0 0 1 17,9 A3,3 0 0 1 12,3 Z M8.5,10 V10.2 M9,15 V15.2 M14.5,16 V16.2 M12.5,12 V12.2</StreamGeometry>
+    <StreamGeometry x:Key="IconHistory">M4.5,12 A7.5,7.5 0 1 0 7,6.4 M4,3.5 V7.5 H8 M12,8 V12 L15,14</StreamGeometry>
+    <StreamGeometry x:Key="IconPlay">M8,5.5 V18.5 L18.5,12 Z</StreamGeometry>
+  </Application.Resources>
+
+  <Application.Styles>
+    <FluentTheme />
+    <!-- Kit NokyLabs com a cor do YT-DLP GUI: menta -->
+    <ui:NokyTheme Accent="#6EE7B7" />
+  </Application.Styles>
+
+</Application>

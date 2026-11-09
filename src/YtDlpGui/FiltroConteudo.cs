@@ -8,7 +8,6 @@ using System.Text;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
-using System.Windows.Forms;
 
 namespace YtDlpGui
 {
@@ -292,89 +291,7 @@ namespace YtDlpGui
             return string.Equals(hashTentativa, config.HashCodigoMestre, StringComparison.OrdinalIgnoreCase);
         }
 
-        /// <summary>
-        /// Mostra um pequeno diálogo pedindo o código mestre e retorna true se
-        /// o código digitado for válido. Todo construído em código (sem
-        /// depender de nenhum arquivo Designer), para manter o módulo num
-        /// único arquivo.
-        /// </summary>
-        public static bool SolicitarCodigoMestre(IWin32Window janelaPai, ConfiguracaoFiltroConteudo config, string motivoBloqueio)
-        {
-            using var dialogo = new CodigoMestreDialog(motivoBloqueio);
-            if (dialogo.ShowDialog(janelaPai) != DialogResult.OK)
-                return false;
-
-            bool valido = CodigoMestreValido(dialogo.CodigoDigitado, config);
-            if (!valido)
-            {
-                MessageBox.Show(janelaPai as Form, "Código mestre incorreto.", "Acesso negado",
-                    MessageBoxButtons.OK, MessageBoxIcon.Error);
-            }
-
-            return valido;
-        }
-
-        /// <summary>Diálogo simples de senha, construído inteiramente via código.</summary>
-        private class CodigoMestreDialog : Form
-        {
-            private readonly TextBox _txtCodigo;
-            public string CodigoDigitado => _txtCodigo.Text;
-
-            public CodigoMestreDialog(string motivoBloqueio)
-            {
-                Text = "Conteúdo bloqueado";
-                FormBorderStyle = FormBorderStyle.FixedDialog;
-                StartPosition = FormStartPosition.CenterParent;
-                MinimizeBox = false;
-                MaximizeBox = false;
-                ClientSize = new System.Drawing.Size(380, 170);
-
-                var lblMotivo = new Label
-                {
-                    Text = motivoBloqueio,
-                    Location = new System.Drawing.Point(16, 16),
-                    Size = new System.Drawing.Size(348, 40),
-                };
-
-                var lblCodigo = new Label
-                {
-                    Text = "Digite o código mestre do professor para continuar:",
-                    Location = new System.Drawing.Point(16, 62),
-                    Size = new System.Drawing.Size(348, 18),
-                };
-
-                _txtCodigo = new TextBox
-                {
-                    Location = new System.Drawing.Point(16, 84),
-                    Size = new System.Drawing.Size(348, 24),
-                    UseSystemPasswordChar = true,
-                };
-
-                var btnOk = new Button
-                {
-                    Text = "Liberar",
-                    DialogResult = DialogResult.OK,
-                    Location = new System.Drawing.Point(196, 122),
-                    Size = new System.Drawing.Size(80, 30),
-                };
-
-                var btnCancelar = new Button
-                {
-                    Text = "Cancelar",
-                    DialogResult = DialogResult.Cancel,
-                    Location = new System.Drawing.Point(284, 122),
-                    Size = new System.Drawing.Size(80, 30),
-                };
-
-                Controls.Add(lblMotivo);
-                Controls.Add(lblCodigo);
-                Controls.Add(_txtCodigo);
-                Controls.Add(btnOk);
-                Controls.Add(btnCancelar);
-
-                AcceptButton = btnOk;
-                CancelButton = btnCancelar;
-            }
-        }
+        // O diálogo que pede o código mestre fica na tela (Dialogo.PedirCodigoMestreAsync),
+        // para este módulo continuar sem depender de nenhuma biblioteca de interface.
     }
 }

@@ -1,49 +1,60 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
+  <!--
+    YT-DLP GUI 3: a mesma lógica da versão 2, com a interface em Avalonia + NokyLabs.UI
+    (o Kit NokyLabs, com a cor menta do app).
+
+    No Windows compila para net8.0-windows10 (precisa disso para as notificações "toast");
+    em outros sistemas compila para net8.0, só para desenvolver e testar a tela.
+  -->
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
-    <TargetFramework>net8.0-windows</TargetFramework>
-    <UseWindowsForms>true</UseWindowsForms>
+    <!-- EhWindows: ligado sozinho no Windows (dá para forçar com -p:EhWindows=true para testar a compilação). -->
+    <EhWindows Condition="'$(EhWindows)' == ''">$([MSBuild]::IsOSPlatform('Windows'))</EhWindows>
+    <TargetFramework Condition="'$(EhWindows)' == 'true'">net8.0-windows10.0.19041.0</TargetFramework>
+    <TargetFramework Condition="'$(EhWindows)' != 'true'">net8.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <AssemblyName>YtDlpGui</AssemblyName>
     <RootNamespace>YtDlpGui</RootNamespace>
-    <ApplicationHighDpiMode>SystemAware</ApplicationHighDpiMode>
     <LangVersion>latest</LangVersion>
-    <!-- Versão exibida no cabeçalho dos logs (ajuda a saber qual build gerou um erro). -->
-    <Version>2.0.0</Version>
+    <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
+    <!-- Versão exibida na barra lateral e no cabeçalho dos logs (ajuda a saber qual build gerou um erro). -->
+    <Version>3.0.0</Version>
     <Product>YT-DLP GUI</Product>
     <AssemblyTitle>YT-DLP GUI</AssemblyTitle>
     <Company>NokyLabs</Company>
     <!-- Ícone exibido no .exe, no Explorer e na barra de tarefas. -->
     <ApplicationIcon>icon.ico</ApplicationIcon>
+    <ApplicationManifest Condition="'$(EhWindows)' == 'true'">app.manifest</ApplicationManifest>
   </PropertyGroup>
 
   <ItemGroup>
-    <!--
-      Guna.UI2.WinForms: biblioteca de controles com visual moderno
-      (botões arredondados, cores customizáveis, etc.) usada para
-      modernizar a interface do programa.
-
-      IMPORTANTE: rodar "dotnet restore" (ou simplesmente compilar) exige
-      conexão com a internet na primeira vez, para baixar o pacote do NuGet.
-    -->
-    <PackageReference Include="Guna.UI2.WinForms" Version="2.0.4.6" />
+    <PackageReference Include="Avalonia" Version="11.3.*" />
+    <PackageReference Include="Avalonia.Desktop" Version="11.3.*" />
+    <PackageReference Include="Avalonia.Themes.Fluent" Version="11.3.*" />
+    <PackageReference Include="Avalonia.Fonts.Inter" Version="11.3.*" />
+    <!-- Notificações "toast" do Windows (as mesmas usadas no CubeBin). -->
+    <PackageReference Include="Microsoft.Toolkit.Uwp.Notifications" Version="7.1.3"
+                      Condition="$(TargetFramework.Contains('-windows'))" />
   </ItemGroup>
 
   <ItemGroup>
-    <!-- Garante que o icon.ico seja copiado para a pasta de saída (para
-         ser usado em tempo de execução como Form.Icon, além de já estar
-         embutido no .exe via ApplicationIcon acima). -->
+    <!-- O Kit NokyLabs (submódulo Git em lib/NokyLabs.UI). -->
+    <ProjectReference Include="..\..\lib\NokyLabs.UI\src\NokyLabs.UI\NokyLabs.UI.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Ícones e telas vão DENTRO do programa (não há mais pasta Assets solta). -->
+    <AvaloniaResource Include="icon.ico" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- icon.ico também fica ao lado do .exe (o pacote e o launcher conferem que ele existe). -->
     <None Include="icon.ico">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
       <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
-      <!-- Fica ao lado do .exe (e não dentro dele), para a janela conseguir carregá-lo. -->
       <ExcludeFromSingleFile>true</ExcludeFromSingleFile>
-    </None>
-    <!-- Ícones e ilustrações usados nas telas (barra lateral, botões, etc.). -->
-    <None Include="Assets\**\*.png">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
     <!--
       Módulo opcional de Filtro de Conteúdo (ver FiltroConteudo.cs).
@@ -54,24 +65,6 @@
     <None Include="filtro-conteudo.exemplo.json">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
-  </ItemGroup>
-
-  <ItemGroup>
-    <!--
-      IMPORTANTE:
-      Se você quiser que o yt-dlp.exe e o ffmpeg.exe sejam copiados
-      automaticamente para a pasta de saída (bin\Debug\net8.0-windows)
-      sempre que compilar, coloque os arquivos numa pasta "tools" ao lado
-      deste .csproj e descomente as linhas abaixo.
-    -->
-    <!--
-    <None Include="tools\yt-dlp.exe">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
-    <None Include="tools\ffmpeg.exe">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
-    -->
   </ItemGroup>
 
 </Project>

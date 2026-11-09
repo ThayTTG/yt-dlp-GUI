@@ -1,0 +1,424 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:ui="using:NokyLabs.UI"
+        xmlns:local="using:YtDlpGui"
+        x:Class="YtDlpGui.MainWindow"
+        x:DataType="local:MainWindow"
+        Title="YT-DLP GUI — Downloader de vídeos"
+        Icon="/icon.ico"
+        Width="1080" Height="720" MinWidth="960" MinHeight="660"
+        WindowStartupLocation="CenterScreen">
+
+  <!--
+    Janela principal: barra lateral (Início, Histórico, Pasta de destino, Configurações),
+    as quatro páginas no meio e a barra de status fixa embaixo, com o progresso e o botão
+    vermelho de cancelar. Toda a lógica está em MainWindow.axaml.cs (a mesma da versão 2).
+  -->
+
+  <Window.Styles>
+    <!-- Seções dentro dos cartões (Cookies, Playlists, Atualizar) -->
+    <Style Selector="Border.secao">
+      <Setter Property="Background" Value="{DynamicResource BgBrush}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="CornerRadius" Value="14" />
+      <Setter Property="Padding" Value="18,16" />
+    </Style>
+    <!-- Título de página -->
+    <Style Selector="TextBlock.titulo">
+      <Setter Property="FontSize" Value="22" />
+      <Setter Property="FontWeight" Value="Bold" />
+      <Setter Property="LetterSpacing" Value="-0.3" />
+    </Style>
+    <!-- Rótulo acima de um campo -->
+    <Style Selector="TextBlock.rotulo">
+      <Setter Property="FontSize" Value="13" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+      <Setter Property="Foreground" Value="{DynamicResource TextSecondaryBrush}" />
+    </Style>
+    <!-- Botão redondo vermelho de cancelar -->
+    <Style Selector="Button.cancelar">
+      <Setter Property="Width" Value="42" />
+      <Setter Property="Height" Value="42" />
+      <Setter Property="Padding" Value="0" />
+      <Setter Property="CornerRadius" Value="21" />
+      <Setter Property="Background" Value="{DynamicResource DangerSoftBrush}" />
+      <Setter Property="BorderThickness" Value="0" />
+      <Setter Property="HorizontalContentAlignment" Value="Center" />
+      <Setter Property="VerticalContentAlignment" Value="Center" />
+      <Setter Property="Cursor" Value="Hand" />
+    </Style>
+    <Style Selector="Button.cancelar:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+      <Setter Property="Background" Value="{DynamicResource DangerBrush}" />
+    </Style>
+    <Style Selector="Button.cancelar:pointerover Path.icon">
+      <Setter Property="Stroke" Value="White" />
+    </Style>
+    <Style Selector="Button.cancelar:disabled">
+      <Setter Property="Opacity" Value="0.35" />
+    </Style>
+    <Style Selector="Button.cancelar Path.icon">
+      <Setter Property="Stroke" Value="{DynamicResource DangerBrush}" />
+    </Style>
+    <!-- Linhas do histórico -->
+    <Style Selector="ListBox#ListaHistorico">
+      <Setter Property="Background" Value="Transparent" />
+    </Style>
+    <Style Selector="ListBox#ListaHistorico ListBoxItem">
+      <Setter Property="Padding" Value="12,10" />
+      <Setter Property="Margin" Value="0,0,0,4" />
+      <Setter Property="CornerRadius" Value="10" />
+    </Style>
+    <Style Selector="ListBox#ListaHistorico ListBoxItem:selected /template/ ContentPresenter#PART_ContentPresenter">
+      <Setter Property="Background" Value="{DynamicResource AccentSoftBrush}" />
+    </Style>
+    <Style Selector="ListBox#ListaHistorico ListBoxItem:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+      <Setter Property="Background" Value="{DynamicResource SurfaceHoverBrush}" />
+    </Style>
+    <!-- Ícones dentro dos botões coloridos acompanham a cor do texto do botão -->
+    <Style Selector="Button.primary Path.icon">
+      <Setter Property="Stroke" Value="{DynamicResource OnAccentBrush}" />
+    </Style>
+    <Style Selector="Button.soft Path.icon">
+      <Setter Property="Stroke" Value="{DynamicResource AccentTextBrush}" />
+    </Style>
+    <Style Selector="Button.danger Path.icon">
+      <Setter Property="Stroke" Value="{DynamicResource DangerBrush}" />
+    </Style>
+    <Style Selector="Button.danger:pointerover Path.icon">
+      <Setter Property="Stroke" Value="White" />
+    </Style>
+  </Window.Styles>
+
+  <Grid ColumnDefinitions="248,*" RowDefinitions="*,Auto">
+
+    <!-- ===================== Barra lateral ===================== -->
+    <Border Grid.RowSpan="2" Background="{DynamicResource SidebarBrush}"
+            BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,0,1,0">
+      <DockPanel Margin="16,22,16,16">
+        <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Spacing="12" Margin="6,0,0,30"
+                    Cursor="Hand" PointerPressed="OnLogoPressed">
+          <Border Width="42" Height="42" CornerRadius="13" Background="{DynamicResource AccentBrush}">
+            <Viewbox Width="22" Height="22">
+              <Path Classes="icon" Data="{StaticResource IconPlay}" Stroke="{DynamicResource OnAccentBrush}"
+                    Fill="{DynamicResource OnAccentBrush}" StrokeThickness="1.5" />
+            </Viewbox>
+          </Border>
+          <StackPanel VerticalAlignment="Center" Spacing="1">
+            <TextBlock Text="YT-DLP GUI" FontSize="17" FontWeight="Bold" />
+            <TextBlock Text="NokyLabs" Classes="muted" />
+          </StackPanel>
+        </StackPanel>
+
+        <ui:CreditsCard x:Name="Creditos" DockPanel.Dock="Bottom" AppName="YT-DLP GUI" />
+
+        <StackPanel Spacing="4">
+          <TextBlock Text="NAVEGAÇÃO" Classes="caps" Margin="12,0,0,8" />
+          <RadioButton x:Name="NavInicio" Classes="nav" GroupName="nav" IsChecked="True" Tag="home">
+            <StackPanel Orientation="Horizontal" Spacing="12">
+              <Viewbox Width="18" Height="18"><Path Classes="icon" Data="{StaticResource IconHome}" /></Viewbox>
+              <TextBlock Text="Início" VerticalAlignment="Center" />
+            </StackPanel>
+          </RadioButton>
+          <RadioButton x:Name="NavHistorico" Classes="nav" GroupName="nav" Tag="historico">
+            <StackPanel Orientation="Horizontal" Spacing="12">
+              <Viewbox Width="18" Height="18"><Path Classes="icon" Data="{StaticResource IconHistory}" /></Viewbox>
+              <TextBlock Text="Histórico" VerticalAlignment="Center" />
+            </StackPanel>
+          </RadioButton>
+          <RadioButton x:Name="NavPasta" Classes="nav" GroupName="nav" Tag="pasta">
+            <StackPanel Orientation="Horizontal" Spacing="12">
+              <Viewbox Width="18" Height="18"><Path Classes="icon" Data="{StaticResource IconFolder}" /></Viewbox>
+              <TextBlock Text="Pasta de destino" VerticalAlignment="Center" />
+            </StackPanel>
+          </RadioButton>
+          <RadioButton x:Name="NavConfig" Classes="nav" GroupName="nav" Tag="config">
+            <StackPanel Orientation="Horizontal" Spacing="12">
+              <Viewbox Width="18" Height="18"><Path Classes="icon" Data="{StaticResource IconSettings}" /></Viewbox>
+              <TextBlock Text="Configurações" VerticalAlignment="Center" />
+            </StackPanel>
+          </RadioButton>
+        </StackPanel>
+      </DockPanel>
+    </Border>
+
+    <!-- ===================== Páginas ===================== -->
+    <Panel Grid.Column="1">
+
+      <!-- ────────── INÍCIO ────────── -->
+      <ScrollViewer x:Name="PaginaInicio">
+        <Border Classes="card" MaxWidth="780" Margin="32,30" Padding="28,26" VerticalAlignment="Top">
+          <StackPanel Spacing="18">
+            <StackPanel Spacing="4" ui:Anim.Entrance="True">
+              <TextBlock Classes="titulo" Text="Baixar vídeo" />
+              <TextBlock Classes="secondary" Text="Cole o link de um vídeo ou playlist e escolha o formato." />
+            </StackPanel>
+
+            <StackPanel Spacing="8" ui:Anim.Entrance="True" ui:Anim.Order="1">
+              <TextBlock Classes="rotulo" Text="Link do vídeo" />
+              <TextBox x:Name="TxtUrl" Classes="field" Watermark="https://www.youtube.com/watch?v=...">
+                <TextBox.InnerLeftContent>
+                  <Viewbox Width="17" Height="17" Margin="4,0,0,0">
+                    <Path Classes="icon" Data="{StaticResource IconLink}" Stroke="{DynamicResource TextMutedBrush}" />
+                  </Viewbox>
+                </TextBox.InnerLeftContent>
+              </TextBox>
+            </StackPanel>
+
+            <!-- Prévia: logo + dica, "Buscando informações..." ou a miniatura do vídeo -->
+            <Border Classes="secao" Height="170" Padding="16" ui:Anim.Entrance="True" ui:Anim.Order="2">
+              <Panel>
+                <StackPanel x:Name="PainelLogo" Spacing="12" HorizontalAlignment="Center" VerticalAlignment="Center">
+                  <Border Width="64" Height="64" CornerRadius="20" HorizontalAlignment="Center"
+                          Background="{DynamicResource AccentSoftBrush}">
+                    <Viewbox Width="28" Height="28">
+                      <Path Classes="icon" Data="{StaticResource IconPlay}" Stroke="{DynamicResource AccentTextBrush}"
+                            Fill="{DynamicResource AccentTextBrush}" StrokeThickness="1.5" />
+                    </Viewbox>
+                  </Border>
+                  <TextBlock Classes="secondary" TextAlignment="Center"
+                             Text="A prévia do vídeo aparece aqui assim que você colar o link." />
+                </StackPanel>
+
+                <TextBlock x:Name="TxtSpinner" IsVisible="False" Classes="secondary accent" FontSize="14"
+                           HorizontalAlignment="Center" VerticalAlignment="Center" Text="⠋ Buscando informações..." />
+
+                <Grid x:Name="PainelPrevia" IsVisible="False" ColumnDefinitions="240,*">
+                  <Border CornerRadius="10" ClipToBounds="True" Width="240" Height="135"
+                          Background="{DynamicResource SurfaceRaisedBrush}">
+                    <Image x:Name="ImgThumb" Stretch="UniformToFill" />
+                  </Border>
+                  <StackPanel Grid.Column="1" Margin="18,4,0,0" Spacing="8">
+                    <TextBlock x:Name="TxtTituloVideo" Classes="h3" FontSize="16" TextWrapping="Wrap" MaxLines="3"
+                               TextTrimming="CharacterEllipsis" />
+                    <TextBlock x:Name="TxtInfoVideo" Classes="secondary" TextWrapping="Wrap" />
+                  </StackPanel>
+                </Grid>
+              </Panel>
+            </Border>
+
+            <Grid ColumnDefinitions="*,12,*" ui:Anim.Entrance="True" ui:Anim.Order="3">
+              <Button x:Name="BtnMp4" Classes="primary" HorizontalAlignment="Stretch" MinHeight="46">
+                <StackPanel Orientation="Horizontal" Spacing="10">
+                  <Viewbox Width="18" Height="18"><Path Classes="icon" Data="{StaticResource IconVideo}" /></Viewbox>
+                  <TextBlock Text="Baixar vídeo  ·  MP4" VerticalAlignment="Center" />
+                </StackPanel>
+              </Button>
+              <Button x:Name="BtnMp3" Grid.Column="2" Classes="soft" HorizontalAlignment="Stretch" MinHeight="46">
+                <StackPanel Orientation="Horizontal" Spacing="10">
+                  <Viewbox Width="18" Height="18"><Path Classes="icon" Data="{StaticResource IconMusic}" /></Viewbox>
+                  <TextBlock Text="Baixar áudio  ·  MP3" VerticalAlignment="Center" />
+                </StackPanel>
+              </Button>
+            </Grid>
+
+            <CheckBox x:Name="ChkPlaylist" ui:Anim.Entrance="True" ui:Anim.Order="4"
+                      Content="Baixar a playlist inteira (quando o link for de uma playlist)" />
+          </StackPanel>
+        </Border>
+      </ScrollViewer>
+
+      <!-- ────────── HISTÓRICO ────────── -->
+      <ScrollViewer x:Name="PaginaHistorico" IsVisible="False">
+        <Border Classes="card" MaxWidth="900" Margin="32,30" Padding="28,26" VerticalAlignment="Top">
+          <StackPanel Spacing="16">
+            <Grid ColumnDefinitions="*,Auto">
+              <StackPanel Spacing="4">
+                <TextBlock Classes="titulo" Text="Histórico de downloads" />
+                <TextBlock Classes="secondary" TextWrapping="Wrap"
+                           Text="Clique duas vezes num item (ou use o botão direito) para abrir a pasta dele." />
+              </StackPanel>
+              <Button x:Name="BtnLimparHistorico" Grid.Column="1" Classes="danger" VerticalAlignment="Top" Margin="16,0,0,0">
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                  <Viewbox Width="15" Height="15"><Path Classes="icon" Data="{StaticResource IconTrash}" /></Viewbox>
+                  <TextBlock Text="Limpar histórico" VerticalAlignment="Center" />
+                </StackPanel>
+              </Button>
+            </Grid>
+
+            <Grid ColumnDefinitions="88,*,150" Margin="12,6,12,0">
+              <TextBlock Classes="caps" Text="TIPO" />
+              <TextBlock Grid.Column="1" Classes="caps" Text="NOME" />
+              <TextBlock Grid.Column="2" Classes="caps" Text="DATA" />
+            </Grid>
+
+            <Panel>
+              <ListBox x:Name="ListaHistorico">
+                <ListBox.ContextMenu>
+                  <ContextMenu>
+                    <MenuItem Header="Abrir pasta do item" Click="OnMenuAbrirPastaClick">
+                      <MenuItem.Icon>
+                        <Viewbox Width="15" Height="15"><Path Classes="icon" Data="{StaticResource IconExternal}" /></Viewbox>
+                      </MenuItem.Icon>
+                    </MenuItem>
+                  </ContextMenu>
+                </ListBox.ContextMenu>
+                <ListBox.ItemTemplate>
+                  <DataTemplate x:DataType="local:LinhaHistorico">
+                    <Grid ColumnDefinitions="88,*,150">
+                      <Border Classes="badge" Classes.accent="{Binding EhVideo}" Classes.gold="{Binding EhAudio}"
+                              HorizontalAlignment="Left" VerticalAlignment="Center">
+                        <TextBlock Text="{Binding Tipo}" />
+                      </Border>
+                      <TextBlock Grid.Column="1" Text="{Binding Titulo}" TextTrimming="CharacterEllipsis"
+                                 VerticalAlignment="Center" Margin="0,0,12,0" ToolTip.Tip="{Binding Titulo}" />
+                      <TextBlock Grid.Column="2" Text="{Binding Data}" Classes="secondary num" VerticalAlignment="Center" />
+                    </Grid>
+                  </DataTemplate>
+                </ListBox.ItemTemplate>
+              </ListBox>
+
+              <StackPanel x:Name="PainelHistoricoVazio" Spacing="12" Margin="0,40" HorizontalAlignment="Center">
+                <Border Width="56" Height="56" CornerRadius="18" HorizontalAlignment="Center"
+                        Background="{DynamicResource SurfaceRaisedBrush}">
+                  <Viewbox Width="26" Height="26"><Path Classes="icon" Data="{StaticResource IconHistory}" /></Viewbox>
+                </Border>
+                <TextBlock Classes="secondary" TextAlignment="Center"
+                           Text="Nenhum download por aqui ainda.&#10;Os próximos vão aparecer nesta lista." />
+              </StackPanel>
+            </Panel>
+          </StackPanel>
+        </Border>
+      </ScrollViewer>
+
+      <!-- ────────── PASTA DE DESTINO ────────── -->
+      <ScrollViewer x:Name="PaginaPasta" IsVisible="False">
+        <Border Classes="card" MaxWidth="700" Margin="32,30" Padding="28,26" VerticalAlignment="Top">
+          <StackPanel Spacing="18">
+            <StackPanel Spacing="4">
+              <TextBlock Classes="titulo" Text="Pasta de destino" />
+              <TextBlock Classes="secondary" Text="Todos os vídeos e áudios baixados vão para esta pasta." />
+            </StackPanel>
+
+            <Border Width="96" Height="96" CornerRadius="28" HorizontalAlignment="Center" Margin="0,6"
+                    Background="{DynamicResource AccentSoftBrush}">
+              <Viewbox Width="44" Height="44"><Path Classes="icon accent" Data="{StaticResource IconFolder}" /></Viewbox>
+            </Border>
+
+            <StackPanel Spacing="8">
+              <TextBlock Classes="rotulo" Text="Local atual" />
+              <TextBox x:Name="TxtPasta" Classes="field" IsReadOnly="True">
+                <TextBox.InnerLeftContent>
+                  <Viewbox Width="17" Height="17" Margin="4,0,0,0">
+                    <Path Classes="icon" Data="{StaticResource IconFolder}" Stroke="{DynamicResource TextMutedBrush}" />
+                  </Viewbox>
+                </TextBox.InnerLeftContent>
+              </TextBox>
+            </StackPanel>
+
+            <StackPanel Orientation="Horizontal" Spacing="10">
+              <Button x:Name="BtnAlterarLocal" Classes="primary">
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                  <Viewbox Width="16" Height="16"><Path Classes="icon" Data="{StaticResource IconFolder}" /></Viewbox>
+                  <TextBlock Text="Alterar pasta" VerticalAlignment="Center" />
+                </StackPanel>
+              </Button>
+              <Button x:Name="BtnAbrirPasta" Classes="secondary">
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                  <Viewbox Width="16" Height="16"><Path Classes="icon" Data="{StaticResource IconExternal}" /></Viewbox>
+                  <TextBlock Text="Abrir no Explorer" VerticalAlignment="Center" />
+                </StackPanel>
+              </Button>
+            </StackPanel>
+          </StackPanel>
+        </Border>
+      </ScrollViewer>
+
+      <!-- ────────── CONFIGURAÇÕES ────────── -->
+      <ScrollViewer x:Name="PaginaConfig" IsVisible="False">
+        <Border Classes="card" MaxWidth="860" Margin="32,30" Padding="28,26" VerticalAlignment="Top">
+          <StackPanel Spacing="18">
+            <StackPanel Spacing="4">
+              <TextBlock Classes="titulo" Text="Configurações" />
+              <TextBlock Classes="secondary" Text="Login por cookies, playlists e atualização do yt-dlp." />
+            </StackPanel>
+
+            <!-- Cookies -->
+            <Border Classes="secao">
+              <StackPanel Spacing="12">
+                <Grid ColumnDefinitions="Auto,*,Auto">
+                  <Viewbox Width="18" Height="18" VerticalAlignment="Center">
+                    <Path Classes="icon accent" Data="{StaticResource IconCookie}" />
+                  </Viewbox>
+                  <TextBlock Grid.Column="1" Classes="h3" Text="Cookies (login)" Margin="10,0,0,0" VerticalAlignment="Center" />
+                  <Button x:Name="BtnAjudaCookies" Grid.Column="2" Classes="icon" Width="32" Height="32" CornerRadius="16"
+                          ToolTip.Tip="Como exportar o arquivo cookies.txt do navegador">
+                    <TextBlock Text="?" FontWeight="Bold" Foreground="{DynamicResource TextSecondaryBrush}" />
+                  </Button>
+                </Grid>
+
+                <RadioButton x:Name="RadSemCookies" GroupName="cookies" IsChecked="True" Content="Não usar cookies" />
+
+                <StackPanel Spacing="8">
+                  <RadioButton x:Name="RadCookiesNavegador" GroupName="cookies" Content="Usar os cookies do navegador" />
+                  <StackPanel Margin="30,0,0,0" Spacing="6">
+                    <WrapPanel>
+                      <ComboBox x:Name="CmbNavegador" Width="170" Margin="0,0,10,8" IsEnabled="False" />
+                      <Button x:Name="BtnExtrairCookies" Classes="soft" Margin="0,0,0,8">
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                          <Viewbox Width="15" Height="15"><Path Classes="icon" Data="{StaticResource IconCookie}" /></Viewbox>
+                          <TextBlock Text="Gerar cookies.txt a partir dele" VerticalAlignment="Center" />
+                        </StackPanel>
+                      </Button>
+                    </WrapPanel>
+                    <TextBlock x:Name="TxtExtrairCookiesStatus" Classes="muted" Text="Nunca extraído nesta pasta." />
+                  </StackPanel>
+                </StackPanel>
+
+                <StackPanel Spacing="8">
+                  <RadioButton x:Name="RadCookiesArquivo" GroupName="cookies" Content="Usar um arquivo cookies.txt" />
+                  <TextBox x:Name="TxtCookiesArquivo" Classes="field" Margin="30,0,0,0" IsReadOnly="True" IsEnabled="False"
+                           Cursor="Hand" Watermark="Clique para escolher o arquivo..." />
+                </StackPanel>
+              </StackPanel>
+            </Border>
+
+            <Grid ColumnDefinitions="*,16,*">
+              <!-- Playlists -->
+              <Border Classes="secao">
+                <StackPanel Spacing="6">
+                  <TextBlock Classes="h3" Text="Playlists" />
+                  <TextBlock Classes="secondary" Text="Como salvar os vídeos de uma playlist" />
+                  <CheckBox x:Name="ChkOrganizarPlaylist" Margin="0,6,0,0" Content="Criar uma subpasta por playlist" />
+                </StackPanel>
+              </Border>
+
+              <!-- Atualizar o yt-dlp -->
+              <Border Grid.Column="2" Classes="secao">
+                <StackPanel Spacing="6">
+                  <TextBlock Classes="h3" Text="Atualizar o yt-dlp" />
+                  <TextBlock x:Name="TxtAtualizarStatus" Classes="secondary" TextWrapping="Wrap"
+                             Text="Se os downloads começarem a falhar, atualizar costuma resolver." />
+                  <Button x:Name="BtnAtualizarYtDlp" Classes="secondary" Margin="0,6,0,0" HorizontalAlignment="Left">
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                      <Viewbox Width="15" Height="15"><Path Classes="icon" Data="{StaticResource IconRefresh}" /></Viewbox>
+                      <TextBlock Text="Verificar atualização" VerticalAlignment="Center" />
+                    </StackPanel>
+                  </Button>
+                </StackPanel>
+              </Border>
+            </Grid>
+          </StackPanel>
+        </Border>
+      </ScrollViewer>
+    </Panel>
+
+    <!-- ===================== Barra de status (sempre visível) ===================== -->
+    <Border Grid.Row="1" Grid.Column="1" Background="{DynamicResource SidebarBrush}"
+            BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,1,0,0" Padding="24,12">
+      <Grid ColumnDefinitions="*,220,52,Auto">
+        <TextBlock x:Name="TxtStatus" Text="Pronto para uso." VerticalAlignment="Center"
+                   TextTrimming="CharacterEllipsis" Foreground="{DynamicResource TextSecondaryBrush}" />
+        <ProgressBar x:Name="BarraProgresso" Grid.Column="1" Classes="slim" Minimum="0" Maximum="100" Value="0"
+                     VerticalAlignment="Center" />
+        <TextBlock x:Name="TxtPercentual" Grid.Column="2" Classes="num" Text="0%" FontWeight="SemiBold"
+                   HorizontalAlignment="Right" VerticalAlignment="Center" />
+        <Button x:Name="BtnCancelar" Grid.Column="3" Classes="cancelar" Margin="16,0,0,0" IsEnabled="False"
+                ToolTip.Tip="Cancelar o download">
+          <Viewbox Width="16" Height="16"><Path Classes="icon" Data="{StaticResource IconClose}" StrokeThickness="2.6" /></Viewbox>
+        </Button>
+      </Grid>
+    </Border>
+
+  </Grid>
+</Window>

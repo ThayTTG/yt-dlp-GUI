@@ -1,6 +1,10 @@
 using System;
+using System.Runtime.InteropServices;
 using System.Threading.Tasks;
-using System.Windows.Forms;
+using Avalonia;
+using Avalonia.Controls.ApplicationLifetimes;
+using Avalonia.Threading;
+using NokyLabs.UI;
 
 namespace YtDlpGui
 {
@@ -12,22 +16,15 @@ namespace YtDlpGui
         // Evita uma "chuva" de janelas de aviso se o mesmo problema se repetir várias vezes seguidas.
         private static DateTime _ultimoAvisoNaTela = DateTime.MinValue;
 
-        /// <summary>
-        /// Ponto de entrada principal da aplicação.
-        /// [STAThread] é obrigatório para aplicações WinForms.
-        /// </summary>
         [STAThread]
-        private static void Main()
+        public static void Main(string[] args)
         {
             // 1) Registro de sessão + log: tem que ser a PRIMEIRA coisa, para até um erro
             //    durante a abertura do programa ficar registrado.
             AutoReparo.IniciarSessao();
 
-            // 2) Rede de proteção contra erros não tratados. Sem isto, um erro em qualquer
-            //    botão (principalmente os "async void") derrubava o programa sem deixar rastro.
-            //    Precisa ser configurado ANTES de criar qualquer janela.
-            Application.SetUnhandledExceptionMode(UnhandledExceptionMode.CatchException);
-            Application.ThreadException += (s, e) => TratarErroDeInterface(e.Exception);
+            // 2) Rede de proteção contra erros não tratados (os da interface são tratados em
+            //    Dispatcher.UIThread.UnhandledException, ligado em ConfigurarProtecaoDaInterface).
             AppDomain.CurrentDomain.UnhandledException += (s, e) => TratarErroFatal(e.ExceptionObject as Exception, e.IsTerminating);
             TaskScheduler.UnobservedTaskException += (s, e) =>
             {
@@ -40,14 +37,9 @@ namespace YtDlpGui
 
             try
             {
-                // Habilita os estilos visuais modernos do Windows (bordas, botões, etc.)
-                Application.EnableVisualStyles();
-
-                // Usa o renderizador de texto do GDI+ para melhor compatibilidade
-                Application.SetCompatibleTextRenderingDefault(false);
-
-                // Inicia a aplicação exibindo o formulário principal
-                Application.Run(new MainForm());
+                BuildAvaloniaApp()
+                    .AfterSetup(_ => ConfigurarProtecaoDaInterface())
+                    .StartWithClassicDesktopLifetime(args);
 
                 AutoReparo.MarcarEncerramentoLimpo();
             }
@@ -55,10 +47,9 @@ namespace YtDlpGui
             {
                 // Erro durante a abertura ou fatal: registra e avisa em vez de sumir sem explicação.
                 GerenciadorLog.Erro("Erro fatal no programa", ex);
-                MostrarAviso(
+                AvisoDoSistema(
                     "O programa precisou ser encerrado por causa de um erro inesperado.\n\n" +
-                    "Os detalhes foram salvos em:\n" + GerenciadorLog.CaminhoErros,
-                    MessageBoxIcon.Error);
+                    "Os detalhes foram salvos em:\n" + GerenciadorLog.CaminhoErros);
             }
             finally
             {
@@ -66,20 +57,36 @@ namespace YtDlpGui
             }
         }
 
-        private static void TratarErroDeInterface(Exception ex)
+        // Usado também pelo previewer do Avalonia.
+        public static AppBuilder BuildAvaloniaApp() =>
+            AppBuilder.Configure<App>()
+                .UsePlatformDetect()
+                .UseNokyLabs()
+                .LogToTrace();
+
+        /// <summary>
+        /// Erros dentro da interface (botões, eventos): ficam no log e o programa CONTINUA aberto,
+        /// com um aviso no máximo a cada 10 segundos. Sem isto, um erro em qualquer botão
+        /// (principalmente os "async void") derrubava o programa sem deixar rastro.
+        /// </summary>
+        private static void ConfigurarProtecaoDaInterface()
         {
-            GerenciadorLog.Erro("Erro inesperado na interface (o programa continua aberto)", ex);
+            Dispatcher.UIThread.UnhandledException += (s, e) =>
+            {
+                e.Handled = true;
+                GerenciadorLog.Erro("Erro inesperado na interface (o programa continua aberto)", e.Exception);
 
-            // Mostra a janela de aviso no máximo uma vez a cada 10 segundos.
-            if ((DateTime.Now - _ultimoAvisoNaTela).TotalSeconds < 10)
-                return;
+                if ((DateTime.Now - _ultimoAvisoNaTela).TotalSeconds < 10)
+                    return;
 
-            _ultimoAvisoNaTela = DateTime.Now;
-            MostrarAviso(
-                "Algo inesperado aconteceu, mas o programa continua funcionando.\n\n" +
-                "Se o problema se repetir, envie o arquivo abaixo para quem cuida do programa:\n" +
-                GerenciadorLog.CaminhoErros,
-                MessageBoxIcon.Warning);
+                _ultimoAvisoNaTela = DateTime.Now;
+                var janela = (Application.Current?.ApplicationLifetime as IClassicDesktopStyleApplicationLifetime)?.MainWindow;
+                _ = Dialogo.MostrarAsync(janela,
+                    "Algo inesperado aconteceu, mas o programa continua funcionando.\n\n" +
+                    "Se o problema se repetir, envie o arquivo abaixo para quem cuida do programa:\n" +
+                    GerenciadorLog.CaminhoErros,
+                    "YT-DLP GUI", TipoDialogo.Aviso);
+            };
         }
 
         private static void TratarErroFatal(Exception? ex, bool encerrando)
@@ -92,16 +99,24 @@ namespace YtDlpGui
                 ProcessosFilhos.EncerrarTodos();
         }
 
-        private static void MostrarAviso(string mensagem, MessageBoxIcon icone)
+        /// <summary>
+        /// Aviso de último caso, quando a interface nem chegou a abrir (ou já caiu):
+        /// usa a caixa de mensagem do próprio Windows.
+        /// </summary>
+        private static void AvisoDoSistema(string mensagem)
         {
             try
             {
-                MessageBox.Show(mensagem, "YT-DLP GUI", MessageBoxButtons.OK, icone);
+                if (OperatingSystem.IsWindows())
+                    MessageBoxW(IntPtr.Zero, mensagem, "YT-DLP GUI", 0x10 /* MB_ICONERROR */);
             }
             catch
             {
                 // Se nem a janela de aviso puder ser mostrada, o log já tem o registro.
             }
         }
+
+        [DllImport("user32.dll", CharSet = CharSet.Unicode)]
+        private static extern int MessageBoxW(IntPtr hWnd, string text, string caption, uint type);
     }
 }

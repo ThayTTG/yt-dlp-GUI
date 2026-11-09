@@ -28,7 +28,7 @@ namespace YtDlpGui
     ///     queda de energia, fechamento forçado) e registra isso no log.
     ///   - Garante que o log tenha onde gravar (plano B se a pasta for protegida).
     ///   - Conserta um histórico corrompido (guarda uma cópia e recomeça).
-    ///   - Verifica yt-dlp.exe, ffmpeg.exe, pasta Assets e o filtro de conteúdo.
+    ///   - Verifica yt-dlp.exe, ffmpeg.exe, o histórico e o filtro de conteúdo.
     ///   - Encerra processos do yt-dlp que ficaram "órfãos".
     ///
     /// O que ele só faz COM a permissão de quem usa (pergunta antes):
@@ -44,17 +44,6 @@ namespace YtDlpGui
     {
         private const long TamanhoMinimoYtDlp = 1_000_000;   // o real tem dezenas de MB
         private const long TamanhoMinimoFfmpeg = 1_000_000;  // o real tem dezenas de MB
-
-        private static readonly string[] ImagensEsperadas =
-        {
-            "logo_app.png", "ilustracao_pasta.png",
-            "ic_home_muted.png", "ic_home_branco.png", "ic_home_roxo.png",
-            "ic_historico_muted.png", "ic_historico_branco.png", "ic_historico_roxo.png",
-            "ic_pasta_muted.png", "ic_pasta_branco.png", "ic_pasta_roxo.png",
-            "ic_config_muted.png", "ic_config_branco.png", "ic_config_roxo.png",
-            "ic_link_muted.png", "ic_video_branco.png", "ic_musica_roxo.png",
-            "ic_lixeira_rosa.png", "ic_abrir_branco.png", "ic_atualizar_branco.png", "ic_cookie_roxo.png"
-        };
 
         private static string? _caminhoTrava;
 
@@ -156,14 +145,13 @@ namespace YtDlpGui
         // Verificação inicial
         // ---------------------------------------------------------------
 
-        public static List<ResultadoVerificacao> VerificarInicio(string caminhoYtDlp, string caminhoFfmpeg, string pastaAssets)
+        public static List<ResultadoVerificacao> VerificarInicio(string caminhoYtDlp, string caminhoFfmpeg)
         {
             var resultados = new List<ResultadoVerificacao>
             {
                 Tentar("Pasta de logs", VerificarPastaDeLogs),
                 Tentar("yt-dlp.exe", () => VerificarExecutavel("yt-dlp.exe", caminhoYtDlp, TamanhoMinimoYtDlp, obrigatorio: true)),
                 Tentar("ffmpeg.exe", () => VerificarExecutavel("ffmpeg.exe", caminhoFfmpeg, TamanhoMinimoFfmpeg, obrigatorio: false)),
-                Tentar("Imagens (Assets)", () => VerificarAssets(pastaAssets)),
                 Tentar("Histórico", VerificarHistorico),
                 Tentar("Filtro de conteúdo", VerificarFiltro)
             };
@@ -266,30 +254,6 @@ namespace YtDlpGui
             }
 
             return new ResultadoVerificacao(nome, SituacaoVerificacao.Ok, "encontrado (" + (tamanho / 1024 / 1024) + " MB)");
-        }
-
-        private static ResultadoVerificacao VerificarAssets(string pastaAssets)
-        {
-            if (!Directory.Exists(pastaAssets))
-            {
-                return new ResultadoVerificacao("Imagens (Assets)", SituacaoVerificacao.Aviso,
-                    "a pasta Assets não foi encontrada; o programa funciona, mas sem os ícones das telas");
-            }
-
-            var faltando = new List<string>();
-            foreach (string imagem in ImagensEsperadas)
-            {
-                if (!File.Exists(Path.Combine(pastaAssets, imagem)))
-                    faltando.Add(imagem);
-            }
-
-            if (faltando.Count > 0)
-            {
-                return new ResultadoVerificacao("Imagens (Assets)", SituacaoVerificacao.Aviso,
-                    "faltam " + faltando.Count + " imagem(ns): " + string.Join(", ", faltando));
-            }
-
-            return new ResultadoVerificacao("Imagens (Assets)", SituacaoVerificacao.Ok, "todas presentes");
         }
 
         private static ResultadoVerificacao VerificarHistorico()

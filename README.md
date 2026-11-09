@@ -1,22 +1,27 @@
 # YtDlpGui — Interface gráfica para o yt-dlp
 
-Aplicação desktop em **C# / .NET 8 (WinForms)** que permite baixar vídeos e
+Aplicação desktop em **C# / .NET 8 (Avalonia + NokyLabs.UI)** que permite baixar vídeos e
 áudios do YouTube sem que o aluno precise usar o CMD ou o PowerShell.
 
-Visual baseado em um mockup próprio: barra lateral de navegação, telas
-separadas por função, paleta sálvia + menta + azul, sem exibir a saída
-bruta do yt-dlp em nenhum momento.
+Desde a **versão 3.0** a interface é feita em **Avalonia** com a **NokyLabs.UI** (o Kit
+NokyLabs, o mesmo visual do launcher e do ValReport), na cor do app: **menta** `#6EE7B7`.
+A lógica é exatamente a da versão 2: só a "casca" mudou. Barra lateral de navegação,
+telas separadas por função e nenhuma saída bruta do yt-dlp na tela.
 
 ## Estrutura dos arquivos
 
 ```
 yt-dlp-GUI/
+├── lib/NokyLabs.UI/            # SUBMÓDULO Git: o Kit NokyLabs (cores, botões, animações, créditos)
 ├── src/YtDlpGui/               # o projeto do app
-│   ├── YtDlpGui.csproj            # projeto (.NET 8, WinForms, pacote Guna.UI2.WinForms)
-│   ├── Program.cs                  # ponto de entrada da aplicação
-│   ├── MainForm.cs                  # toda a lógica: navegação, download, notificações
-│   ├── MainForm.Designer.cs         # layout visual (barra lateral + 4 páginas + status bar)
-│   ├── Tema.cs                     # acabamento visual: barra de título escura, lista do histórico, ícones
+│   ├── YtDlpGui.csproj            # projeto (.NET 8, Avalonia, NokyLabs.UI)
+│   ├── Program.cs                  # ponto de entrada + rede de proteção contra erros
+│   ├── App.axaml                   # tema (NokyTheme com a cor menta) e os ícones próprios do app
+│   ├── MainWindow.axaml            # a tela: barra lateral + 4 páginas + barra de status
+│   ├── MainWindow.axaml.cs         # a lógica da tela (a mesma do antigo MainForm.cs)
+│   ├── RegrasDoDownload.cs         # regras sem tela: argumentos do yt-dlp, erros traduzidos, navegador padrão
+│   ├── Dialogo.cs                  # janelas de aviso/pergunta e o pedido do código mestre
+│   ├── Notificacoes.cs             # notificações do Windows (toast) ao terminar um download
 │   ├── GerenciadorHistorico.cs      # persistência do histórico em JSON (%AppData%), com gravação atômica e quarentena
 │   ├── GerenciadorLog.cs            # logs de erro/atividade em .txt na pasta do programa (ver seção 13)
 │   ├── AutoReparo.cs                # autodiagnóstico e autorreparo (ver seção 13)
@@ -25,13 +30,26 @@ yt-dlp-GUI/
 │   ├── FiltroConteudo.cs             # MÓDULO OPCIONAL: bloqueio de sites (ver seção 9)
 │   ├── filtro-conteudo.exemplo.json  # exemplo de configuração do filtro (inerte por si só)
 │   ├── icon.ico                     # ícone do app (janela, taskbar, .exe)
-│   ├── Assets/                      # ícones e ilustrações (logo, navegação, botões)
 │   ├── publicar.ps1                 # script que gera o pacote pronto para distribuir
 │   ├── LEIA-ME.txt                  # instruções para o usuário final (vai dentro do pacote)
+├── tests/YtDlpGui.Tests/       # testes das regras (o comando do yt-dlp tem que continuar igual)
 ├── docs/ANALISE-E-CORRECOES.md  # relatório da análise de integridade (problemas achados e o que mudou)
 ├── CHANGELOG.md                  # histórico de versões (vira o texto de cada lançamento)
 └── README.md                    # este arquivo (documentação técnica)
 ```
+
+### Primeira vez com o código (submódulo)
+
+O visual vem da biblioteca **NokyLabs.UI**, que fica num repositório próprio e entra aqui como
+submódulo. Ao clonar:
+
+```powershell
+git clone --recurse-submodules https://github.com/ThayTTG/yt-dlp-GUI.git
+# ou, num clone que já existe:
+git submodule update --init
+```
+
+Para trazer uma versão nova do Kit: `git submodule update --remote lib/NokyLabs.UI`.
 
 ## 1. Onde colocar o `yt-dlp.exe` e o `ffmpeg.exe`
 
@@ -50,27 +68,23 @@ _ffmpegPath = Path.Combine(pastaApp, "ffmpeg.exe");
 
 ## 2. Arquitetura da interface (barra lateral + páginas)
 
-Diferente da versão anterior (tudo em uma única tela com log rolável), o
-app agora é dividido em uma **casca de navegação** (`MainForm`) com quatro
-"páginas" — painéis que ocupam a mesma área e alternam visibilidade:
+`MainWindow.axaml` tem a **barra lateral** (Início, Histórico, Pasta de destino,
+Configurações e, embaixo, o cartão com a versão e os créditos) e quatro "páginas" que ocupam
+a mesma área e alternam visibilidade:
 
-| Painel               | Conteúdo                                             |
+| Página               | Conteúdo                                             |
 |-----------------------|-------------------------------------------------------|
-| `pnlHome`              | Campo de URL + botões "Baixar .MP4" / "Baixar .MP3" + toggle de playlist |
-| `pnlHistorico`         | Lista (Tipo/Nome/Data) dos downloads já concluídos    |
-| `pnlPasta`             | Local de salvamento + botão "Alterar Local"           |
-| `pnlConfiguracoes`     | Autenticação por cookies + botão "Atualizar yt-dlp"   |
+| `PaginaInicio`         | Campo de link, prévia do vídeo, botões "Baixar vídeo · MP4" / "Baixar áudio · MP3" e a opção de playlist |
+| `PaginaHistorico`      | Lista (Tipo/Nome/Data) dos downloads já concluídos    |
+| `PaginaPasta`          | Local de salvamento + "Alterar pasta" e "Abrir no Explorer" |
+| `PaginaConfig`         | Cookies (login), playlists e "Verificar atualização" do yt-dlp |
 
-A troca de página é feita por `MostrarPagina(string pagina)` em
-`MainForm.cs`, chamada pelos cliques nos ícones da barra lateral
-(`picLogo`, `picNavHistorico`, `picNavPasta`, `picNavConfig`). Os ícones
-trocam de cor (branco → azul) conforme a página ativa, via
-`AtualizarIconesDeNavegacao`.
+A troca é feita por `MostrarPagina(string pagina)` em `MainWindow.axaml.cs`. A **barra de
+status** fica sempre visível embaixo, com o estágio do download, a barra de progresso e o
+botão vermelho redondo de cancelar.
 
-Uma **barra de status fixa** (`pnlStatusBar`) fica sempre visível na parte
-inferior, independente da página aberta, mostrando o estágio atual do
-download e a barra de progresso — e o botão vermelho circular "Cancelar"
-fica sempre acessível no canto inferior direito da área de conteúdo.
+As **regras sem tela** (montar o comando do yt-dlp, traduzir erros, detectar o navegador
+padrão) ficam em `RegrasDoDownload.cs` e têm testes em `tests/YtDlpGui.Tests`.
 
 ## 3. Sem terminal / log bruto
 
@@ -89,31 +103,22 @@ comum. Isso foi removido da interface. Em vez disso:
   técnico.
 - Em caso de falha, `TraduzirErro()` mapeia as mensagens de erro mais
   comuns do yt-dlp (bloqueio anti-bot, ffmpeg ausente, vídeo indisponível,
-  vídeo privado) para frases em português, exibidas em um `MessageBox`
-  simples — sem o texto original do yt-dlp na tela.
+  vídeo privado) para frases em português, exibidas numa janelinha de aviso
+  (`Dialogo.cs`) — sem o texto original do yt-dlp na tela.
 
 ## 4. Notificações do Windows
 
-Ao final de um download (sucesso ou falha), o app dispara uma notificação
-usando `NotifyIcon.ShowBalloonTip` (método `MostrarNotificacao` em
-`MainForm.cs`):
+Ao final de um download (sucesso ou falha), o app mostra uma notificação do Windows
+(`Notificacoes.Mostrar`, no formato "toast" do Windows 10/11, pelo pacote
+`Microsoft.Toolkit.Uwp.Notifications`, o mesmo do CubeBin):
 
-- **Sucesso**: título "Download concluído", mensagem com o nome do
-  arquivo salvo.
-- **Falha**: título "Falha no download", mensagem com o erro traduzido
-  (mesma lógica de `TraduzirErro`).
-- **Atualização do yt-dlp**: notificação própria ("yt-dlp atualizado"),
-  sem gerar entrada no histórico.
+- **Sucesso**: título "Download concluído", mensagem com o nome do arquivo salvo.
+- **Falha**: título "Falha no download", mensagem com o erro traduzido.
+- **Atualização do yt-dlp**: notificação própria ("yt-dlp atualizado"), sem gerar entrada no histórico.
 
-Isso permite que o aluno minimize a janela ou troque de tela enquanto o
-download roda em segundo plano, e ainda saiba quando terminou.
-
-> Notificações balão (`ShowBalloonTip`) são a API nativa mais simples do
-> WinForms para esse fim. Elas usam o ícone da bandeja do sistema
-> (`notifyIcon1`, criado oculto/visível conforme necessário). Se quiser
-> "toasts" no estilo Windows 11 mais recente, seria necessário migrar para
-> a API `Microsoft.Toolkit.Uwp.Notifications` — não incluída aqui para
-> manter o projeto sem dependências extras além do Guna.UI2.
+Isso permite que o aluno minimize a janela ou troque de tela enquanto o download roda em
+segundo plano, e ainda saiba quando terminou. Uma notificação nunca derruba o programa: se
+falhar, só fica registrada no log.
 
 ## 5. Histórico de downloads
 
@@ -153,7 +158,7 @@ entre si — veja o bug abaixo):
 
 Resolve o erro "Sign in to confirm you're not a bot" do YouTube.
 
-### Bug corrigido: os dois radios ficavam marcados ao mesmo tempo
+### Bug antigo (versão 2): os dois radios ficavam marcados ao mesmo tempo
 
 `Guna2RadioButton`, diferente do `RadioButton` nativo do WinForms, **não**
 desmarca automaticamente os "irmãos" no mesmo container quando um é
@@ -163,10 +168,8 @@ Guna2RadioButton não replica sozinho. Resultado: era possível marcar
 marcado — na real os dois estavam marcados ao mesmo tempo por baixo dos
 panos, e a exibição só "escolhia" um pra mostrar.
 
-Corrigido em `OpcaoDeAutenticacao_CheckedChanged`: agora a exclusividade é
-forçada manualmente (desmarca os outros dois sempre que um é marcado),
-com uma flag `_atualizandoOpcaoDeAutenticacao` para evitar reentrância
-infinita do evento `CheckedChanged`.
+Na versão 3 isso deixou de existir de vez: no Avalonia os três botões de opção usam o mesmo
+`GroupName`, e o próprio controle garante que só um fica marcado.
 
 ### Extrator de cookies.txt (resolve o erro "403 Forbidden")
 
@@ -191,7 +194,7 @@ usando um vídeo estável do YouTube só como gatilho (nada é baixado). Isso
 grava um arquivo `cookies.txt` físico, estável, na pasta do programa
 (`AppDomain.CurrentDomain.BaseDirectory`). Depois de extrair, o app muda
 automaticamente para o modo "Arquivo cookies.txt" e já aponta pro arquivo
-recém-gerado (`btnExtrairCookies_Click`, em `MainForm.cs`) — o usuário não
+recém-gerado (`ExtrairCookiesAsync`, em `MainWindow.axaml.cs`) — o usuário não
 precisa selecionar nada manualmente.
 
 Os downloads passam a usar `--cookies cookies.txt` (leitura de arquivo
@@ -225,58 +228,30 @@ simplesmente extrair de novo.
   linhas `Downloading item X of Y` do yt-dlp), além da porcentagem do
   vídeo atual.
 
-## 8. Visual 2.0 (tema escuro roxo, família NokyLabs)
+## 8. Visual 3.0 (Kit NokyLabs, cor menta)
 
-A partir da versão 2.0 o app segue a identidade do launcher **NokyLabs**:
-fundo roxo-escuro, cards levemente mais claros, acento violeta com
-gradiente para magenta e ícones de traço fino.
+A partir da versão 3.0 a interface usa a biblioteca **NokyLabs.UI**: as mesmas cores,
+fonte (Inter), cantos arredondados, botões em pílula e animações do NokyLabs Launcher e do
+ValReport. Cada app da NokyLabs tem a sua **cor de destaque**; a do YT-DLP GUI é a **menta**
+`#6EE7B7`, definida numa linha só do `App.axaml`:
 
-| Uso                                   | Cor        |
-|---------------------------------------|------------|
-| Fundo da janela                       | `#0E0B16`  |
-| Barra lateral, rodapé e barra de título | `#130F1E` |
-| Cards                                 | `#1A1528`  |
-| Campos e seções internas              | `#221B34`  |
-| Bordas sutis                          | `#2E2545`  |
-| Texto principal / secundário          | `#EDE9F6` / `#A49BB8` |
-| Acento (botões, foco, progresso)      | `#8B5CF6` → `#D946EF` |
-| Perigo (Cancelar / Limpar)            | `#F43F5E`  |
+```xml
+<ui:NokyTheme Accent="#6EE7B7" />
+```
 
-Constantes centralizadas no topo de `MainForm.Designer.cs`; fonte **Segoe UI**
-(padrão do Windows). O esqueleto da janela agora é todo por *Dock* (barra
-lateral à esquerda, rodapé embaixo, conteúdo preenchendo o resto), e os cards
-das páginas Início, Pasta e Configurações ficam sempre centralizados ao
-maximizar. O que não cabe no Designer fica em **`Tema.cs`**:
+O resto (hover, fundo translúcido, cor de texto legível, texto escuro por cima do botão
+menta) é calculado pela biblioteca. Os ícones são desenhos de traço (sem imagens .png):
+os do Kit vêm da NokyLabs.UI e os próprios do app (vídeo, música, link, cookie, histórico)
+estão no topo do `App.axaml`. Não há mais pasta `Assets`.
 
-- barra de título escura (Windows 10 1809+ e Windows 11);
-- ícones da barra lateral que acendem ao passar o mouse;
-- lista do histórico desenhada à mão (`ListaEscura`): linhas altas, etiqueta
-  MP4/MP3 colorida, destaque de seleção e barra de rolagem escura;
-- menu do botão direito no tema escuro;
-- novo botão **"Abrir no Explorer"** na página Pasta.
-
-Os ícones ficam em `Assets/` no formato `ic_<nome>_<cor>.png` (cores `muted`,
-`branco`, `roxo`, `rosa`), além de `logo_app.png` e `ilustracao_pasta.png`.
-Todos foram gerados pelo script `gerar_icones.py` (Python + Pillow, traço arredondado, 48 px), então dá para
-recriar ou trocar a cor de todos de uma vez.
+O cartão do canto da barra lateral mostra a versão e os créditos: "Idealizado e aprovado por
+Thayna Dias" e "Desenvolvido com IA (Claude, da Anthropic)".
 
 ### Ícone do aplicativo
 
-`icon.ico` (raiz do projeto) é referenciado via
-`<ApplicationIcon>` no `.csproj` (ícone do `.exe`) e carregado em tempo de
-execução por `CarregarIconeDaJanela()` (ícone da janela/taskbar/bandeja de
-notificações). Para trocar, substitua o arquivo mantendo o nome.
-
-### Instalando o Guna.UI2.WinForms
-
-```bash
-cd src/YtDlpGui
-dotnet restore
-```
-
-Exige internet na primeira vez (baixa o pacote do NuGet, fixado na versão
-`2.0.4.6` no `.csproj`). O `publicar.ps1` já roda `dotnet publish`, que
-restaura automaticamente.
+`icon.ico` (raiz do projeto) é o ícone do `.exe` (`<ApplicationIcon>`) e da janela (vai
+dentro do programa). Também é copiado para o lado do `.exe`, porque o pacote e o launcher
+conferem que ele existe. Para trocar, substitua o arquivo mantendo o nome.
 
 ## 9. Filtro de conteúdo (opcional — para uso em sala de aula)
 
@@ -302,7 +277,7 @@ arquivo `filtro-conteudo.json` na mesma pasta do `.exe`, com
 `"habilitado": true`. Sem esse arquivo (o caso de qualquer pessoa que
 clonar o repositório no GitHub), `FiltroConteudo.CarregarConfiguracao()`
 retorna uma configuração desligada e `PassaPeloFiltroDeConteudoAsync()`
-(chamado em `MainForm.cs`, nos dois botões de download) retorna
+(chamado em `MainWindow.axaml.cs`, nos dois botões de download) retorna
 imediatamente `true` — nenhuma verificação, nenhuma chamada extra ao
 yt-dlp, nenhum impacto em quem não configurou nada.
 
@@ -323,8 +298,7 @@ baixar do Pinterest e o programa simplesmente bloqueia sem aviso".
    download começar — é o custo dessa checagem.
 
 Se qualquer uma das duas checagens bloquear, aparece um diálogo pedindo o
-**código mestre** (construído inteiramente em código dentro do próprio
-`FiltroConteudo.cs`, sem precisar de arquivo Designer). Digitando
+**código mestre** (montado em `Dialogo.PedirCodigoMestreAsync`, com o visual do app). Digitando
 corretamente, aquele download específico é liberado.
 
 ### Como ativar (só na SUA cópia, sem afetar o GitHub)
@@ -397,10 +371,8 @@ cd src\YtDlpGui
 .\publicar.ps1
 ```
 
-> **Atenção**: o script atual não copia a pasta `Assets/` nem o
-> `icon.ico` manualmente — isso já é feito automaticamente pelo
-> `dotnet publish`, pois ambos estão marcados como `CopyToOutputDirectory`
-> no `.csproj`. Não é necessário alterar o `publicar.ps1` para isso.
+> O `dotnet publish` gera um único `YtDlpGui.exe` (com o .NET e o Avalonia dentro) e copia o
+> `icon.ico` para o lado dele. Não há mais pasta `Assets`: os ícones vão dentro do programa.
 
 ## 11. Possíveis melhorias futuras (fora do escopo atual)
 
@@ -485,7 +457,6 @@ manualmente com **Ctrl+Shift+D**. **Ctrl+Shift+L** abre a pasta de logs.
 | `historico.json` | Se corrompido, guarda cópia (`historico.corrompido-*.json`, 5 mais recentes) e recomeça | — |
 | `yt-dlp.exe` | — | Ausente/pequeno demais/sem cabeçalho "MZ": **oferece baixar** o oficial do GitHub, conferindo o SHA-256 da release |
 | `ffmpeg.exe` | — | Avisa no log (sem autorreparo: o arquivo é grande) |
-| Pasta `Assets` | — | Lista as imagens que faltam (o programa funciona sem elas) |
 | `filtro-conteudo.json` | — | Avisa se existir mas for inválido (nesse caso o filtro fica DESLIGADO) |
 
 Reparo em tempo de execução: se um download falhar com um erro típico de
