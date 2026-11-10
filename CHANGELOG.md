@@ -5,6 +5,8 @@ Tudo o que muda no YT-DLP GUI, versão por versão. O texto de cada versão vira
 **Como usar:** anote as mudanças em `## [Não lançado]` enquanto trabalha. Na hora de lançar, é só aumentar o `<Version>` no `.csproj` e enviar para o branch `release`: o lançamento usa essa seção e ela vira a seção da versão sozinha.
 
 ## [Não lançado]
+
+## [3.1.0] - 2026-11-10
 - Agora também para **Linux** (64 bits): o mesmo app, o mesmo visual. Baixe o `YtDlpGui-linux-x64.zip` (ou instale pelo NokyLabs Launcher), extraia e abra o `YtDlpGui`.
 - No Linux, o FFmpeg e o Deno são baixados sozinhos na primeira abertura, ou o app usa os que já estiverem instalados no sistema.
 - No Linux, o app reconhece o navegador padrão para os cookies e avisa quando o download termina (notificação do sistema).
